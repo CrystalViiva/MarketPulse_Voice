@@ -1,0 +1,3 @@
+reference,date,direction,amount,counterparty
+EXAMPLE-TRANSFER-001,2026-10-09,IN,15000.00,Amina
+EXAMPLE-TRANSFER-002,2026-10-09,IN,25000.00,Amina

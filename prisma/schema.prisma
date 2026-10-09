@@ -1,0 +1,256 @@
+generator client {
+  provider = "prisma-client-js"
+}
+datasource db {
+  provider = "postgresql"
+  url = env("DATABASE_URL")
+}
+model User {
+  id String @id
+  name String
+  email String @unique
+  emailVerified Boolean @default(false)
+  image String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  sessions Session[]
+  accounts Account[]
+  membership Membership?
+}
+model Session {
+  id String @id
+  expiresAt DateTime
+  token String @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId])
+}
+model Account {
+  id String @id
+  accountId String
+  providerId String
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken String?
+  refreshToken String?
+  idToken String?
+  accessTokenExpiresAt DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope String?
+  password String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([userId])
+}
+model Verification {
+  id String @id
+  identifier String
+  value String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([identifier])
+}
+model Business {
+  id String @id @default(cuid())
+  name String
+  mode String @default("real")
+  createdAt DateTime @default(now())
+  memberships Membership[]
+}
+model Membership {
+  id String @id @default(cuid())
+  userId String @unique
+  businessId String
+  role String @default("owner")
+  user User @relation(fields: [userId], references: [id])
+  business Business @relation(fields: [businessId], references: [id])
+}
+model Counterparty {
+  id String @id @default(cuid())
+  businessId String
+  alias String
+  @@unique([businessId, alias])
+}
+model Draft {
+  id String @id @default(cuid())
+  businessId String
+  actorId String
+  requestKey String
+  state String
+  version Int @default(1)
+  candidate Json
+  transcript String?
+  source String
+  replacesId String?
+  correctionReason String?
+  confirmedId String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([businessId, requestKey])
+  @@index([businessId, state])
+}
+model DraftVersion {
+  id String @id @default(cuid())
+  businessId String
+  draftId String
+  version Int
+  candidate Json
+  actorId String
+  createdAt DateTime @default(now())
+  @@unique([draftId, version])
+}
+model Interaction {
+  id String @id @default(cuid())
+  businessId String
+  draftId String?
+  state String
+  provider String
+  model String
+  outcome String
+  latencyMs Int
+  language String
+  consentAt DateTime?
+  createdAt DateTime @default(now())
+  @@index([businessId])
+}
+model Activity {
+  id String @id @default(cuid())
+  businessId String
+  draftId String @unique
+  type String
+  item String
+  quantity String?
+  unit String?
+  amount BigInt
+  eventDate String
+  counterparty String?
+  source String
+  voidedAt DateTime?
+  replacesId String? @unique
+  createdAt DateTime @default(now())
+  @@index([businessId, eventDate])
+}
+model Settlement {
+  id String @id @default(cuid())
+  businessId String
+  draftId String? @unique
+  originActivityId String?
+  direction String
+  amount BigInt
+  eventDate String
+  counterparty String?
+  source String
+  voidedAt DateTime?
+  createdAt DateTime @default(now())
+  @@index([businessId, eventDate])
+}
+model Allocation {
+  id String @id @default(cuid())
+  businessId String
+  settlementId String
+  activityId String
+  amount BigInt
+  voidedAt DateTime?
+  createdAt DateTime @default(now())
+  @@unique([settlementId, activityId])
+  @@index([businessId, activityId])
+}
+model ImportBatch {
+  id String @id @default(cuid())
+  businessId String
+  fingerprint String
+  state String @default("preview")
+  rows Json
+  createdAt DateTime @default(now())
+  @@unique([businessId, fingerprint])
+}
+model ImportedPayment {
+  id String @id @default(cuid())
+  businessId String
+  batchId String
+  reference String
+  eventDate String
+  amount BigInt
+  direction String
+  counterparty String
+  createdAt DateTime @default(now())
+  @@unique([businessId, reference])
+}
+model Match {
+  id String @id @default(cuid())
+  businessId String
+  requestKey String
+  paymentId String
+  settlementId String
+  activityId String
+  amount BigInt
+  method String
+  actorId String
+  createdAt DateTime @default(now())
+  @@unique([businessId, requestKey])
+  @@index([businessId, paymentId])
+}
+model Evidence {
+  id String @id @default(cuid())
+  businessId String
+  activityId String
+  mime String
+  bytes Bytes
+  source String @default("merchant-upload")
+  actorId String
+  createdAt DateTime @default(now())
+  @@index([businessId, activityId])
+}
+model AuditEvent {
+  id String @id @default(cuid())
+  businessId String
+  actorId String
+  entityId String
+  action String
+  details Json
+  createdAt DateTime @default(now())
+  @@index([businessId, createdAt])
+}
+model ReportShare {
+  id String @id @default(cuid())
+  businessId String
+  tokenHash String @unique
+  snapshot Json
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime @default(now())
+  @@index([businessId])
+}
+model ValidationSession {
+  id String @id @default(cuid())
+  businessId String
+  participantId String
+  language String
+  task String
+  expectedAmount BigInt?
+  confirmedAmount BigInt?
+  result String
+  correction String
+  durationSeconds Int
+  outcome String
+  feedback String
+  consentAt DateTime
+  createdAt DateTime @default(now())
+  @@index([businessId])
+}
+model RateLimit {
+  key String @id
+  count Int
+  expiresAt DateTime
+}
+model AuthRateLimit {
+  id String @id @default(cuid())
+  key String @unique
+  count Int
+  lastRequest BigInt
+}
