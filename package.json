@@ -2,6 +2,10 @@
   "name": "marketpulse-voice",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
+  "overrides": {
+    "deepmerge-ts": "8.0.0"
+  },
   "engines": {
     "node": "24.19.x",
     "npm": "11.x"
@@ -11,9 +15,11 @@
     "build": "prisma generate && next build",
     "start": "next start --hostname 127.0.0.1",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "next typegen && tsc --noEmit",
+    "format": "prettier --write --ignore-unknown src scripts tests e2e docs \"*.ts\" \"*.mjs\" \"*.json\" README.md STATUS.md",
     "test": "node scripts/test.mjs",
     "test:e2e": "playwright test",
+    "test:production": "node scripts/production-smoke.mjs",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
@@ -30,5 +36,29 @@
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "zod": "4.3.6"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@playwright/test": "1.64.0",
+    "@types/node": "24.19.1",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "eslint": "10.12.0",
+    "eslint-plugin-jsx-a11y": "6.10.2",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "globals": "17.13.0",
+    "prettier": "3.9.9",
+    "prisma": "6.19.3",
+    "tsx": "4.23.15",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.71.1",
+    "vite": "7.3.7",
+    "vitest": "4.1.11"
+  },
+  "allowScripts": {
+    "@prisma/client@6.19.3": true,
+    "@prisma/engines@6.19.3": true,
+    "prisma@6.19.3": true,
+    "esbuild@0.28.2": true
   }
 }

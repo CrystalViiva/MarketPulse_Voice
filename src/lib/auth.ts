@@ -7,6 +7,12 @@ export const auth = betterAuth({
   secret: process.env.BETTER_AUTH_SECRET,
   emailAndPassword: { enabled: true, minPasswordLength: 12, maxPasswordLength: 128 },
   session: { expiresIn: 60 * 60 * 24 * 7, updateAge: 60 * 60 * 24 },
-  rateLimit: { enabled: true, window: 60, max: 30, storage: 'database', modelName: 'AuthRateLimit' },
+  rateLimit: {
+    enabled: true,
+    window: 60,
+    max: 30,
+    storage: 'database',
+    modelName: 'AuthRateLimit',
+  },
   advanced: { cookiePrefix: 'marketpulse' },
 });

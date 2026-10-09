@@ -7,7 +7,7 @@ The single application can run on a Node host with persistent PostgreSQL. Files 
 Once a host is selected:
 
 1. Create a new production database and dedicated least-privilege application role. Configure verified TLS to the database and backups. Do not reuse local/test/demo URLs.
-2. Set `DATABASE_URL`, a fresh random `BETTER_AUTH_SECRET`, exact HTTPS `BETTER_AUTH_URL`, `APP_ENV=production`, `TRANSCRIPTION_MODE=disabled`. Keep test/demo database URLs out of the deployed runtime. The local `check:env` script additionally expects test/demo URLs for developer reproducibility; use a production secret validator tailored to deployment.
+2. Set `DATABASE_URL`, a fresh random `BETTER_AUTH_SECRET`, exact HTTPS `BETTER_AUTH_URL`, `APP_ENV=production`, `TRANSCRIPTION_MODE=disabled`. Keep test/demo database URLs out of the deployed runtime. Run `npm run check:env`; production mode checks runtime settings without requiring development/test URLs.
 3. Install with `npm ci`, run `npm run db:generate`, apply `npm run db:deploy` against production after backup/review, and run `npm run build` and `npm start`. Never run test, migration reset or demo seed against production.
 4. Set secure proxy behavior, request-size limits (5 MB evidence; 1 MB normalized audio; 256 KB CSV), TLS, operational logs without payloads, app/database monitoring and scheduled backups. Rate limits persist in PostgreSQL; add ingress rate limiting for unauthenticated traffic.
 5. Review authentication mail delivery/recovery, retention/deletion, quotas, concurrent connection limits, malware scanning and the chosen provider's data-processing terms before recruiting real traders.

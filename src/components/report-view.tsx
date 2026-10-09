@@ -1,15 +1,184 @@
 import { currency } from '@/lib/domain';
-export type ReportViewData={business:{name:string;mode:string};from:string;to:string;generatedAt:string;sales:string;receipts:string;payments:string;netCash:string;customerDebt:string;supplierDebt:string;operatingExpenses:string;inventoryPurchases:string;unresolvedPayments:number;coverage:{eligibleRecords:number;supportedRecords:number;documentRecords:number;paymentRecords:number;eligibleAmount:string;supportedRecordAmount:string;matchedPaymentAmount:string};rows:{type:string;eventDate:string;amount:string;label:string}[];limitations:string[]};
-export function ReportView({report:r,lender=false}:{report:ReportViewData;lender?:boolean}){
-  const coverage=r.coverage.eligibleRecords?Math.round(100*r.coverage.supportedRecords/r.coverage.eligibleRecords):0;
-  return <div className="report-content">
-    {lender&&<><div className="eyebrow">PRIVATE BUSINESS REPORT · READ ONLY</div><h1>{r.business.name}</h1><p className="muted">A snapshot of merchant-recorded activity. Shared by the merchant for review.</p></>}
-    <div className="report-period"><span>Reporting period</span><strong>{r.from} — {r.to}</strong><small>Africa/Lagos · Generated {new Date(r.generatedAt).toLocaleDateString('en-NG')}</small></div>
-    {r.business.mode==='demo'&&<div className="notice warning">DEMO BUSINESS · Synthetic examples. Not real trader or financing evidence.</div>}
-    <div className="stat-grid"><div className="stat"><span>Recorded sales</span><strong>{currency(r.sales)}</strong><small>Includes credit sales</small></div><div className="stat"><span>Cash received</span><strong>{currency(r.receipts)}</strong><small>Sales payments + collections</small></div><div className="stat"><span>Cash paid</span><strong>{currency(r.payments)}</strong><small>Operating + inventory payments</small></div><div className="stat accent"><span>Net cash movement</span><strong>{currency(r.netCash)}</strong><small>Cash received less cash paid · not profit</small></div></div>
-    <div className="two-cols"><section className="card"><h3>Amounts outstanding</h3><div className="data-row"><span>Customers owe you</span><strong>{currency(r.customerDebt)}</strong></div><div className="data-row"><span>You owe suppliers</span><strong>{currency(r.supplierDebt)}</strong></div><p className="muted small">Balances as of {r.to}, including earlier recorded activity.</p></section><section className="card"><h3>Recorded purchases & expenses</h3><div className="data-row"><span>Operating expenses</span><strong>{currency(r.operatingExpenses)}</strong></div><div className="data-row"><span>Inventory purchases</span><strong>{currency(r.inventoryPurchases)}</strong></div><p className="muted small">These are activity amounts, including unpaid purchases.</p></section></div>
-    <section className="card"><div className="section-heading"><div><div className="eyebrow">EVIDENCE COVERAGE</div><h3>What supports these records?</h3></div><strong className="coverage-number">{coverage}%</strong></div><div className="progress-track" role="meter" aria-label="Records with supporting evidence" aria-valuenow={coverage} aria-valuemin={0} aria-valuemax={100}><span style={{width:`${coverage}%`}}/></div><p>{r.coverage.supportedRecords} of {r.coverage.eligibleRecords} unique activities have a document or matched payment.</p><div className="chips"><span className="badge">{r.coverage.documentRecords} document-supported</span><span className="badge mint">{r.coverage.paymentRecords} payment-matched</span><span className="badge neutral">{r.unresolvedPayments} unresolved imported payments</span></div><p className="muted small">Eligible activity value: {currency(r.coverage.eligibleAmount)}. Value of records with some support: {currency(r.coverage.supportedRecordAmount)}. Actual matched payment value: {currency(r.coverage.matchedPaymentAmount)}. A partial match does not verify the full record. Categories can overlap; the headline counts each record once.</p></section>
-    {lender&&<section className="card"><h3>Recorded activity</h3><div className="table-wrap"><table><thead><tr><th>Date</th><th>Type</th><th>Amount</th><th>Evidence</th></tr></thead><tbody>{r.rows.map((a,i)=><tr key={i}><td>{a.eventDate}</td><td>{a.type.toLowerCase()}</td><td>{currency(a.amount)}</td><td>{a.label}</td></tr>)}</tbody></table>{!r.rows.length&&<p>No confirmed activity in this period.</p>}</div></section>}
-    <section className="notice"><h3>Read this report with its limits</h3><ul>{r.limitations.map(l=><li key={l}>{l}</li>)}</ul><p>No credit score, loan approval or lender partnership is implied.</p></section>
-  </div>;
+export type ReportViewData = {
+  business: { name: string; mode: string };
+  from: string;
+  to: string;
+  generatedAt: string;
+  sales: string;
+  receipts: string;
+  payments: string;
+  netCash: string;
+  customerDebt: string;
+  supplierDebt: string;
+  operatingExpenses: string;
+  inventoryPurchases: string;
+  unresolvedPayments: number;
+  coverage: {
+    eligibleRecords: number;
+    supportedRecords: number;
+    documentRecords: number;
+    paymentRecords: number;
+    eligibleAmount: string;
+    supportedRecordAmount: string;
+    matchedPaymentAmount: string;
+  };
+  rows: { type: string; eventDate: string; amount: string; label: string }[];
+  limitations: string[];
+};
+export function ReportView({
+  report: r,
+  lender = false,
+}: {
+  report: ReportViewData;
+  lender?: boolean;
+}) {
+  const coverage = r.coverage.eligibleRecords
+    ? Math.round((100 * r.coverage.supportedRecords) / r.coverage.eligibleRecords)
+    : 0;
+  return (
+    <div className="report-content">
+      {lender && (
+        <>
+          <div className="eyebrow">PRIVATE BUSINESS REPORT · READ ONLY</div>
+          <h1>{r.business.name}</h1>
+          <p className="muted">
+            A snapshot of merchant-recorded activity. Shared by the merchant for review.
+          </p>
+        </>
+      )}
+      <div className="report-period">
+        <span>Reporting period</span>
+        <strong>
+          {r.from} — {r.to}
+        </strong>
+        <small>
+          Africa/Lagos · Generated {new Date(r.generatedAt).toLocaleDateString('en-NG')}
+        </small>
+      </div>
+      {r.business.mode === 'demo' && (
+        <div className="notice warning">
+          DEMO BUSINESS · Synthetic examples. Not real trader or financing evidence.
+        </div>
+      )}
+      <div className="stat-grid">
+        <div className="stat">
+          <span>Recorded sales</span>
+          <strong>{currency(r.sales)}</strong>
+          <small>Includes credit sales</small>
+        </div>
+        <div className="stat">
+          <span>Cash received</span>
+          <strong>{currency(r.receipts)}</strong>
+          <small>Sales payments + collections</small>
+        </div>
+        <div className="stat">
+          <span>Cash paid</span>
+          <strong>{currency(r.payments)}</strong>
+          <small>Operating + inventory payments</small>
+        </div>
+        <div className="stat accent">
+          <span>Net cash movement</span>
+          <strong>{currency(r.netCash)}</strong>
+          <small>Cash received less cash paid · not profit</small>
+        </div>
+      </div>
+      <div className="two-cols">
+        <section className="card">
+          <h3>Amounts outstanding</h3>
+          <div className="data-row">
+            <span>Customers owe you</span>
+            <strong>{currency(r.customerDebt)}</strong>
+          </div>
+          <div className="data-row">
+            <span>You owe suppliers</span>
+            <strong>{currency(r.supplierDebt)}</strong>
+          </div>
+          <p className="muted small">Balances as of {r.to}, including earlier recorded activity.</p>
+        </section>
+        <section className="card">
+          <h3>Recorded purchases & expenses</h3>
+          <div className="data-row">
+            <span>Operating expenses</span>
+            <strong>{currency(r.operatingExpenses)}</strong>
+          </div>
+          <div className="data-row">
+            <span>Inventory purchases</span>
+            <strong>{currency(r.inventoryPurchases)}</strong>
+          </div>
+          <p className="muted small">These are activity amounts, including unpaid purchases.</p>
+        </section>
+      </div>
+      <section className="card">
+        <div className="section-heading">
+          <div>
+            <div className="eyebrow">EVIDENCE COVERAGE</div>
+            <h3>What supports these records?</h3>
+          </div>
+          <strong className="coverage-number">{coverage}%</strong>
+        </div>
+        <div
+          className="progress-track"
+          role="meter"
+          aria-label="Records with supporting evidence"
+          aria-valuenow={coverage}
+          aria-valuemin={0}
+          aria-valuemax={100}
+        >
+          <span style={{ width: `${coverage}%` }} />
+        </div>
+        <p>
+          {r.coverage.supportedRecords} of {r.coverage.eligibleRecords} unique activities have a
+          document or matched payment.
+        </p>
+        <div className="chips">
+          <span className="badge">{r.coverage.documentRecords} document-supported</span>
+          <span className="badge mint">{r.coverage.paymentRecords} payment-matched</span>
+          <span className="badge neutral">{r.unresolvedPayments} unresolved imported payments</span>
+        </div>
+        <p className="muted small">
+          Eligible activity value: {currency(r.coverage.eligibleAmount)}. Value of records with some
+          support: {currency(r.coverage.supportedRecordAmount)}. Actual matched payment value:{' '}
+          {currency(r.coverage.matchedPaymentAmount)}. A partial match does not verify the full
+          record. Categories can overlap; the headline counts each record once.
+        </p>
+      </section>
+      {lender && (
+        <section className="card">
+          <h3>Recorded activity</h3>
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Type</th>
+                  <th>Amount</th>
+                  <th>Evidence</th>
+                </tr>
+              </thead>
+              <tbody>
+                {r.rows.map((a, i) => (
+                  <tr key={i}>
+                    <td>{a.eventDate}</td>
+                    <td>{a.type.toLowerCase()}</td>
+                    <td>{currency(a.amount)}</td>
+                    <td>{a.label}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {!r.rows.length && <p>No confirmed activity in this period.</p>}
+          </div>
+        </section>
+      )}
+      <section className="notice">
+        <h3>Read this report with its limits</h3>
+        <ul>
+          {r.limitations.map((l) => (
+            <li key={l}>{l}</li>
+          ))}
+        </ul>
+        <p>No credit score, loan approval or lender partnership is implied.</p>
+      </section>
+    </div>
+  );
 }

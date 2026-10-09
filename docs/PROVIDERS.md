@@ -2,14 +2,14 @@
 
 Checked **9 October 2026**. No provider credentials were found in the workspace environment. No live audio inference was performed. `src/lib/providers.ts` defines transcription, interpretation and optional speech-output interfaces.
 
-| Capability | Implemented path | Tested claim |
-|---|---|---|
-| Nigerian English transcription | Unavailable live adapter; deliberate scripted fixture adapter | Fixtures exercise workflow only; no real accuracy result |
-| Interpretation | Limited deterministic English rules plus structured manual form | Explicit values only, schema validated, merchant clarification |
-| Speech output | Interface boundary only | Not implemented; text read-back |
-| Voice confirmation/correction | Accessible buttons/form | Not voice-operated |
-| Yoruba/Hausa/Igbo/Pidgin | No live adapter selected | No tested language capability |
-| WhatsApp | Deferred | No webhook/credential integration |
+| Capability                     | Implemented path                                                | Tested claim                                                   |
+| ------------------------------ | --------------------------------------------------------------- | -------------------------------------------------------------- |
+| Nigerian English transcription | Unavailable live adapter; deliberate scripted fixture adapter   | Fixtures exercise workflow only; no real accuracy result       |
+| Interpretation                 | Limited deterministic English rules plus structured manual form | Explicit values only, schema validated, merchant clarification |
+| Speech output                  | Interface boundary only                                         | Not implemented; text read-back                                |
+| Voice confirmation/correction  | Accessible buttons/form                                         | Not voice-operated                                             |
+| Yoruba/Hausa/Igbo/Pidgin       | No live adapter selected                                        | No tested language capability                                  |
+| WhatsApp                       | Deferred                                                        | No webhook/credential integration                              |
 
 ## Verified publisher material
 

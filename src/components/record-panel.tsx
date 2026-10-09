@@ -1,58 +1,784 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import { ArrowRight, Check, CheckCircle2, FileAudio, Mic, PencilLine, RotateCcw, Square, X, AudioLines, ArrowUpRight } from 'lucide-react';
+import {
+  ArrowRight,
+  Check,
+  CheckCircle2,
+  FileAudio,
+  Mic,
+  PencilLine,
+  RotateCcw,
+  Square,
+  X,
+  AudioLines,
+  ArrowUpRight,
+} from 'lucide-react';
 import { Candidate, currency, emptyCandidate, lagosDate, kobo } from '@/lib/domain';
 import { toWav } from '@/lib/audio-client';
-import { api, DraftView, Feedback, typeLabels, useTask, Workspace } from './client-shared';
-export function RecordPanel({data,draft,setDraft,refresh}:{data:Workspace;draft:DraftView|null;setDraft:(d:DraftView|null)=>void;refresh:()=>Promise<void>}){
-  const t=useTask();const [consent,setConsent]=useState(false);const [recording,setRecording]=useState(false);const [seconds,setSeconds]=useState(0);const [audio,setAudio]=useState<Blob|null>(null);const [audioUrl,setAudioUrl]=useState('');const [stage,setStage]=useState('');const [success,setSuccess]=useState('');const [text,setText]=useState('');const [answer,setAnswer]=useState('');
-  const recorder=useRef<MediaRecorder|null>(null);const stream=useRef<MediaStream|null>(null);const audioKey=useRef('');const textKey=useRef('');
-  useEffect(()=>{if(!audio){setAudioUrl('');return;}const url=URL.createObjectURL(audio);setAudioUrl(url);return()=>URL.revokeObjectURL(url);},[audio]);
-  useEffect(()=>{if(!recording)return;const timer=setInterval(()=>setSeconds(v=>v+1),1000);const stop=setTimeout(()=>{recorder.current?.stop();setRecording(false);},29000);return()=>{clearInterval(timer);clearTimeout(stop);};},[recording]);
-  useEffect(()=>()=>{stream.current?.getTracks().forEach(t=>t.stop());},[]);
-  const start=()=>void t.run(async()=>{
-    setSuccess('');if(!consent)throw new Error('Tick the recording consent box first.');
-    if(!navigator.mediaDevices?.getUserMedia||typeof MediaRecorder==='undefined')throw new Error('Recording is unavailable in this browser. Upload audio or use manual entry.');
-    try{stream.current=await navigator.mediaDevices.getUserMedia({audio:true});}catch{throw new Error('Microphone access was denied or unavailable. Allow it in browser settings, upload an audio file, or use manual entry below.');}
-    const chunks:BlobPart[]=[];const rec=new MediaRecorder(stream.current);recorder.current=rec;
-    rec.ondataavailable=e=>{if(e.data.size)chunks.push(e.data);};
-    rec.onstop=()=>{stream.current?.getTracks().forEach(t=>t.stop());void t.run(async()=>{setStage('Preparing recording…');try{setAudio(await toWav(new Blob(chunks,{type:rec.mimeType})));audioKey.current=crypto.randomUUID();}finally{setStage('');}});};
-    rec.start();setSeconds(0);setRecording(true);setAudio(null);
-  });
-  const sendVoice=(fixtureId?:string)=>void t.run(async()=>{
-    if(!consent)throw new Error('Tick the recording consent box first.');
-    setStage('Uploading…');setSuccess('');const form=new FormData();form.set('consent','true');form.set('language','en-NG');form.set('mode',fixtureId?'fixture':'live');
-    if(fixtureId){form.set('fixtureId',fixtureId);audioKey.current ||= crypto.randomUUID();}
-    form.set('requestKey',audioKey.current||crypto.randomUUID());if(audio)form.set('audio',audio,'recording.wav');
-    try{setStage('Processing…');const res=await fetch('/api/voice',{method:'POST',body:form});const result=await res.json();if(!res.ok)throw new Error(result.error);
-      if(result.query){const resultQuery=await api<{answer:string}>({action:'query',text:result.query});setAnswer(resultQuery.answer);}else setDraft(result.draft);
-      audioKey.current='';setAudio(null);await refresh();
-    }finally{setStage('');}
-  });
-  const manual=()=>void t.run(async()=>{const c=emptyCandidate();c.eventDate=lagosDate();const d=await api<DraftView>({action:'draft',candidate:c,requestKey:crypto.randomUUID()});setDraft(d);setSuccess('');await refresh();});
-  return <><div className="page-heading"><div><div className="eyebrow">ONE RECORD AT A TIME</div><h1>Let’s book your day.</h1><p>Say what happened. Review it. Make it part of your story.</p></div><span className="page-symbol"><AudioLines size={30}/></span></div>
-    <Feedback error={t.error}/>{success&&<div className="notice success" role="status"><CheckCircle2 size={22}/>{success}</div>}
-    {draft?<DraftEditor key={draft.id+':'+draft.version} draft={draft} data={data} onChange={setDraft} onDone={async(message)=>{setDraft(null);setSuccess(message);await refresh();}}/>:<div className="record-grid"><section className="card record-card"><div className="section-heading"><span className="badge neutral"><span className="status-dot"/>Nigerian English · voice pending</span><span className="small muted">30 sec maximum</span></div><div className="mic-area"><div className={'mic-halo '+(recording?'recording':'')}><button className="mic-button" aria-label={recording?'Stop recording':'Start recording'} disabled={t.busy} onClick={recording?()=>{recorder.current?.stop();setRecording(false);}:start}>{recording?<Square size={34} fill="currentColor"/>:<Mic size={44} strokeWidth={1.7}/>}</button></div><h2>{recording?`Listening · ${seconds}s`:audio?'Your recording is ready':'Your next record starts here.'}</h2><p>{recording?'Tap stop when you’re done.':audio?'Listen back, then send when you’re ready.':'Tap the microphone and tell us about your business.'}</p><div className="waveform" aria-hidden="true">{[12,21,33,18,40,27,15,32,44,24,14,28,38,20,12].map((h,i)=><span key={i} style={{height:h}}/>)}</div></div>
-      <label className="consent"><input type="checkbox" checked={consent} onChange={e=>setConsent(e.target.checked)}/><span>I agree to process this recording for my business record. Audio is discarded after the request. Live ASR is currently unavailable.</span></label>
-      {audio&&<div className="audio-review"><audio controls src={audioUrl} aria-label="Review your recording"/><div className="button-row"><button className="primary" disabled={t.busy} onClick={()=>sendVoice()}>Send for transcription<ArrowRight size={17}/></button><button className="secondary" onClick={()=>{setAudio(null);audioKey.current='';}}>Discard audio</button></div></div>}
-      <div className="button-row centered"><label className="button secondary"><FileAudio size={18}/>Upload audio<input className="sr-only" type="file" accept="audio/*" disabled={t.busy||recording} onChange={e=>{const file=e.target.files?.[0];if(file)void t.run(async()=>{if(!consent)throw new Error('Tick the consent box before preparing audio.');if(file.size>10000000)throw new Error('Choose an audio file smaller than 10 MB.');setAudio(await toWav(file));audioKey.current=crypto.randomUUID();});e.target.value='';}}/></label><button className="secondary" disabled={t.busy||recording} onClick={manual}><PencilLine size={18}/>Manual entry</button></div>
-      <p className="small muted center">Live provider not connected. Audio is never replaced with a demo transcript.</p><div role="status" className="small center">{stage}</div>
-    </section><aside className="record-aside"><section className="card warm"><div className="eyebrow">A LITTLE GUIDANCE</div><h3>Tell the whole story.</h3><p className="example-quote">“I sold five bags of rice for ₦40,000 total. Amina will pay me later.”</p><div className="hint-row"><span>01</span><p>What was sold or bought?</p></div><div className="hint-row"><span>02</span><p>How much, and on which date?</p></div><div className="hint-row"><span>03</span><p>Was it paid, part-paid or on credit?</p></div><p className="small muted">We’ll ask about anything unclear. You always have the final say.</p></section><section className="card steps-card"><h3>A record you can trust</h3><div><Mic size={18}/><span>Speak or type</span></div><div><PencilLine size={18}/><span>Review and clarify</span></div><div><CheckCircle2 size={18}/><span>Confirm, then save</span></div></section></aside></div>}
-    {!draft&&data.capabilities.fixture&&<section className="card fixture-card"><div><span className="badge amber">SCRIPTED DEMO · NOT LIVE ASR</span><h3>Explore the voice workflow</h3><p className="muted small">These return fixed example transcripts, regardless of audio. Choose an example deliberately.</p></div><div className="button-row">{[['ambiguous','Ambiguous rice sale'],['credit','₦40,000 credit sale'],['cash','Paid tomato sale']].map(([id,label])=><button key={id} className="secondary" disabled={t.busy} onClick={()=>{audioKey.current=crypto.randomUUID();sendVoice(id);}}>{label}<ArrowUpRight size={15}/></button>)}</div></section>}
-    {!draft&&data.drafts.length>0&&<section className="card"><div className="section-heading"><h3>Ready when you are</h3><span className="badge neutral">{data.drafts.length} recoverable drafts</span></div>{data.drafts.map(d=><button className="draft-row" key={d.id} onClick={()=>setDraft(d)}><span><strong>{d.candidate.item||'Unfinished business record'}</strong><small>{d.state==='needs_clarification'?'Needs a little clarification':'Ready for your confirmation'} · version {d.version}</small></span><ArrowRight size={18}/></button>)}</section>}
-    {!draft&&<div className="two-cols"><section className="card"><h3>Type what happened</h3><p className="muted small">Limited English rules. Unknown details will be left for you to fill in.</p><form onSubmit={e=>{e.preventDefault();void t.run(async()=>{textKey.current ||= crypto.randomUUID();setDraft(await api<DraftView>({action:'interpret',text,requestKey:textKey.current}));textKey.current='';await refresh();});}}><label className="sr-only" htmlFor="entry-text">Business entry</label><textarea id="entry-text" value={text} onChange={e=>{setText(e.target.value);textKey.current='';}} required maxLength={2000} placeholder="Sold rice for 40000 total on credit to Amina today."/><button className="secondary" disabled={t.busy}>Prepare draft<ArrowRight size={16}/></button></form></section><section className="card"><h3>Ask your business</h3><p className="muted small">Answers use confirmed records. Try “today’s sales” or “outstanding debts”.</p><form onSubmit={e=>{e.preventDefault();const f=new FormData(e.currentTarget);void t.run(async()=>setAnswer((await api<{answer:string}>({action:'query',text:String(f.get('query'))})).answer));}}><label className="sr-only" htmlFor="query">Business question</label><input id="query" name="query" required maxLength={500} placeholder="How much did I sell today?"/><button className="secondary" disabled={t.busy}>Ask my book<ArrowRight size={16}/></button></form>{answer&&<p className="query-answer" role="status">{answer}</p>}</section></div>}
-  </>;
+import {
+  api,
+  DraftView,
+  Feedback,
+  typeLabels,
+  uploadForm,
+  useTask,
+  Workspace,
+} from './client-shared';
+export function RecordPanel({
+  data,
+  draft,
+  setDraft,
+  refresh,
+}: {
+  data: Workspace;
+  draft: DraftView | null;
+  setDraft: (d: DraftView | null) => void;
+  refresh: () => Promise<void>;
+}) {
+  const t = useTask();
+  const [consent, setConsent] = useState(false);
+  const [recording, setRecording] = useState(false);
+  const [seconds, setSeconds] = useState(0);
+  const [audio, setAudio] = useState<Blob | null>(null);
+  const [audioUrl, setAudioUrl] = useState('');
+  const [stage, setStage] = useState('');
+  const [success, setSuccess] = useState('');
+  const [text, setText] = useState('');
+  const [answer, setAnswer] = useState('');
+  const recorder = useRef<MediaRecorder | null>(null);
+  const stream = useRef<MediaStream | null>(null);
+  const audioKey = useRef('');
+  const textKey = useRef('');
+  useEffect(() => {
+    if (!audio) {
+      setAudioUrl('');
+      return;
+    }
+    const url = URL.createObjectURL(audio);
+    setAudioUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [audio]);
+  useEffect(() => {
+    if (!recording) return;
+    const timer = setInterval(() => setSeconds((v) => v + 1), 1000);
+    const stop = setTimeout(() => {
+      recorder.current?.stop();
+      setRecording(false);
+    }, 29000);
+    return () => {
+      clearInterval(timer);
+      clearTimeout(stop);
+    };
+  }, [recording]);
+  useEffect(
+    () => () => {
+      stream.current?.getTracks().forEach((t) => t.stop());
+    },
+    [],
+  );
+  const start = () =>
+    void t.run(async () => {
+      setSuccess('');
+      if (!consent) throw new Error('Tick the recording consent box first.');
+      if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined')
+        throw new Error(
+          'Recording is unavailable in this browser. Upload audio or use manual entry.',
+        );
+      try {
+        stream.current = await navigator.mediaDevices.getUserMedia({ audio: true });
+      } catch {
+        throw new Error(
+          'Microphone access was denied or unavailable. Allow it in browser settings, upload an audio file, or use manual entry below.',
+        );
+      }
+      const chunks: BlobPart[] = [];
+      const rec = new MediaRecorder(stream.current);
+      recorder.current = rec;
+      rec.ondataavailable = (e) => {
+        if (e.data.size) chunks.push(e.data);
+      };
+      rec.onstop = () => {
+        stream.current?.getTracks().forEach((t) => t.stop());
+        void t.run(async () => {
+          setStage('Preparing recording…');
+          try {
+            setAudio(await toWav(new Blob(chunks, { type: rec.mimeType })));
+            audioKey.current = crypto.randomUUID();
+          } finally {
+            setStage('');
+          }
+        });
+      };
+      rec.start();
+      setSeconds(0);
+      setRecording(true);
+      setAudio(null);
+    });
+  const sendVoice = (fixtureId?: string) =>
+    void t.run(async () => {
+      if (!consent) throw new Error('Tick the recording consent box first.');
+      setStage('Uploading…');
+      setSuccess('');
+      const form = new FormData();
+      form.set('consent', 'true');
+      form.set('language', 'en-NG');
+      form.set('mode', fixtureId ? 'fixture' : 'live');
+      if (fixtureId) {
+        form.set('fixtureId', fixtureId);
+        audioKey.current ||= crypto.randomUUID();
+      }
+      form.set('requestKey', audioKey.current || crypto.randomUUID());
+      if (audio) form.set('audio', audio, 'recording.wav');
+      try {
+        const result = await uploadForm<{ query?: string; draft?: DraftView }>(
+          '/api/voice',
+          form,
+          setStage,
+        );
+        if (result.query) {
+          const resultQuery = await api<{ answer: string }>({
+            action: 'query',
+            text: result.query,
+          });
+          setAnswer(resultQuery.answer);
+        } else if (result.draft) setDraft(result.draft);
+        audioKey.current = '';
+        setAudio(null);
+        await refresh();
+      } finally {
+        setStage('');
+      }
+    });
+  const manual = () =>
+    void t.run(async () => {
+      const c = emptyCandidate();
+      c.eventDate = lagosDate();
+      const d = await api<DraftView>({
+        action: 'draft',
+        candidate: c,
+        requestKey: crypto.randomUUID(),
+      });
+      setDraft(d);
+      setSuccess('');
+      await refresh();
+    });
+  return (
+    <>
+      <div className="page-heading">
+        <div>
+          <div className="eyebrow">ONE RECORD AT A TIME</div>
+          <h1>Let’s book your day.</h1>
+          <p>Say what happened. Review it. Make it part of your story.</p>
+        </div>
+        <span className="page-symbol">
+          <AudioLines size={30} />
+        </span>
+      </div>
+      <Feedback error={t.error} />
+      {success && (
+        <div className="notice success" role="status">
+          <CheckCircle2 size={22} />
+          {success}
+        </div>
+      )}
+      {draft ? (
+        <DraftEditor
+          key={draft.id + ':' + draft.version}
+          draft={draft}
+          data={data}
+          onChange={setDraft}
+          onDone={async (message) => {
+            setDraft(null);
+            setSuccess(message);
+            await refresh();
+          }}
+        />
+      ) : (
+        <div className="record-grid">
+          <section className="card record-card">
+            <div className="section-heading">
+              <span className="badge neutral">
+                <span className="status-dot" />
+                Nigerian English · voice pending
+              </span>
+              <span className="small muted">30 sec maximum</span>
+            </div>
+            <div className="mic-area">
+              <div className={'mic-halo ' + (recording ? 'recording' : '')}>
+                <button
+                  className="mic-button"
+                  aria-label={recording ? 'Stop recording' : 'Start recording'}
+                  disabled={t.busy}
+                  onClick={
+                    recording
+                      ? () => {
+                          recorder.current?.stop();
+                          setRecording(false);
+                        }
+                      : start
+                  }
+                >
+                  {recording ? (
+                    <Square size={34} fill="currentColor" />
+                  ) : (
+                    <Mic size={44} strokeWidth={1.7} />
+                  )}
+                </button>
+              </div>
+              <h2>
+                {recording
+                  ? `Listening · ${seconds}s`
+                  : audio
+                    ? 'Your recording is ready'
+                    : 'Your next record starts here.'}
+              </h2>
+              <p>
+                {recording
+                  ? 'Tap stop when you’re done.'
+                  : audio
+                    ? 'Listen back, then send when you’re ready.'
+                    : 'Tap the microphone and tell us about your business.'}
+              </p>
+              <div className="waveform" aria-hidden="true">
+                {[12, 21, 33, 18, 40, 27, 15, 32, 44, 24, 14, 28, 38, 20, 12].map((h, i) => (
+                  <span key={i} style={{ height: h }} />
+                ))}
+              </div>
+            </div>
+            <label className="consent">
+              <input
+                type="checkbox"
+                checked={consent}
+                onChange={(e) => setConsent(e.target.checked)}
+              />
+              <span>
+                I agree to process this recording for my business record. Audio is discarded after
+                the request. Live ASR is currently unavailable.
+              </span>
+            </label>
+            {audio && (
+              <div className="audio-review">
+                {/* eslint-disable-next-line jsx-a11y/media-has-caption -- Private preview of the merchant's own unsent audio; no transcript exists yet. Manual entry remains available. */}
+                <audio controls src={audioUrl || undefined} aria-label="Review your recording" />
+                <div className="button-row">
+                  <button className="primary" disabled={t.busy} onClick={() => sendVoice()}>
+                    Send for transcription
+                    <ArrowRight size={17} />
+                  </button>
+                  <button
+                    className="secondary"
+                    onClick={() => {
+                      setAudio(null);
+                      audioKey.current = '';
+                    }}
+                  >
+                    Discard audio
+                  </button>
+                </div>
+              </div>
+            )}
+            <div className="button-row centered">
+              <label className="button secondary">
+                <FileAudio size={18} />
+                Upload audio
+                <input
+                  className="sr-only"
+                  type="file"
+                  accept="audio/*"
+                  disabled={t.busy || recording}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file)
+                      void t.run(async () => {
+                        if (!consent)
+                          throw new Error('Tick the consent box before preparing audio.');
+                        if (file.size > 10000000)
+                          throw new Error('Choose an audio file smaller than 10 MB.');
+                        setAudio(await toWav(file));
+                        audioKey.current = crypto.randomUUID();
+                      });
+                    e.target.value = '';
+                  }}
+                />
+              </label>
+              <button className="secondary" disabled={t.busy || recording} onClick={manual}>
+                <PencilLine size={18} />
+                Manual entry
+              </button>
+            </div>
+            <p className="small muted center">
+              Live provider not connected. Audio is never replaced with a demo transcript.
+            </p>
+            <div role="status" className="small center">
+              {stage}
+            </div>
+          </section>
+          <aside className="record-aside">
+            <section className="card warm">
+              <div className="eyebrow">A LITTLE GUIDANCE</div>
+              <h3>Tell the whole story.</h3>
+              <p className="example-quote">
+                “I sold five bags of rice for ₦40,000 total. Amina will pay me later.”
+              </p>
+              <div className="hint-row">
+                <span>01</span>
+                <p>What was sold or bought?</p>
+              </div>
+              <div className="hint-row">
+                <span>02</span>
+                <p>How much, and on which date?</p>
+              </div>
+              <div className="hint-row">
+                <span>03</span>
+                <p>Was it paid, part-paid or on credit?</p>
+              </div>
+              <p className="small muted">
+                We’ll ask about anything unclear. You always have the final say.
+              </p>
+            </section>
+            <section className="card steps-card">
+              <h3>A record you can trust</h3>
+              <div>
+                <Mic size={18} />
+                <span>Speak or type</span>
+              </div>
+              <div>
+                <PencilLine size={18} />
+                <span>Review and clarify</span>
+              </div>
+              <div>
+                <CheckCircle2 size={18} />
+                <span>Confirm, then save</span>
+              </div>
+            </section>
+          </aside>
+        </div>
+      )}
+      {!draft && data.capabilities.fixture && (
+        <section className="card fixture-card">
+          <div>
+            <span className="badge amber">SCRIPTED DEMO · NOT LIVE ASR</span>
+            <h3>Explore the voice workflow</h3>
+            <p className="muted small">
+              These return fixed example transcripts, regardless of audio. Choose an example
+              deliberately.
+            </p>
+          </div>
+          <div className="button-row">
+            {[
+              ['ambiguous', 'Ambiguous rice sale'],
+              ['credit', '₦40,000 credit sale'],
+              ['cash', 'Paid tomato sale'],
+              ['query', 'Today’s sales query'],
+            ].map(([id, label]) => (
+              <button
+                key={id}
+                className="secondary"
+                disabled={t.busy}
+                onClick={() => {
+                  audioKey.current = crypto.randomUUID();
+                  sendVoice(id);
+                }}
+              >
+                {label}
+                <ArrowUpRight size={15} />
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+      {!draft && data.drafts.length > 0 && (
+        <section className="card">
+          <div className="section-heading">
+            <h3>Ready when you are</h3>
+            <span className="badge neutral">{data.drafts.length} recoverable drafts</span>
+          </div>
+          {data.drafts.map((d) => (
+            <button className="draft-row" key={d.id} onClick={() => setDraft(d)}>
+              <span>
+                <strong>{d.candidate.item || 'Unfinished business record'}</strong>
+                <small>
+                  {d.state === 'needs_clarification'
+                    ? 'Needs a little clarification'
+                    : 'Ready for your confirmation'}{' '}
+                  · version {d.version}
+                </small>
+              </span>
+              <ArrowRight size={18} />
+            </button>
+          ))}
+        </section>
+      )}
+      {!draft && (
+        <div className="two-cols">
+          <section className="card">
+            <h3>Type what happened</h3>
+            <p className="muted small">
+              Limited English rules. Unknown details will be left for you to fill in.
+            </p>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                void t.run(async () => {
+                  textKey.current ||= crypto.randomUUID();
+                  setDraft(
+                    await api<DraftView>({
+                      action: 'interpret',
+                      text,
+                      requestKey: textKey.current,
+                    }),
+                  );
+                  textKey.current = '';
+                  await refresh();
+                });
+              }}
+            >
+              <label className="sr-only" htmlFor="entry-text">
+                Business entry
+              </label>
+              <textarea
+                id="entry-text"
+                value={text}
+                onChange={(e) => {
+                  setText(e.target.value);
+                  textKey.current = '';
+                }}
+                required
+                maxLength={2000}
+                placeholder="Sold rice for 40000 total on credit to Amina today."
+              />
+              <button className="secondary" disabled={t.busy}>
+                Prepare draft
+                <ArrowRight size={16} />
+              </button>
+            </form>
+          </section>
+          <section className="card">
+            <h3>Ask your business</h3>
+            <p className="muted small">
+              Answers use confirmed records. Try “today’s sales” or “outstanding debts”.
+            </p>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                const f = new FormData(e.currentTarget);
+                void t.run(async () =>
+                  setAnswer(
+                    (
+                      await api<{ answer: string }>({
+                        action: 'query',
+                        text: String(f.get('query')),
+                      })
+                    ).answer,
+                  ),
+                );
+              }}
+            >
+              <label className="sr-only" htmlFor="query">
+                Business question
+              </label>
+              <input
+                id="query"
+                name="query"
+                required
+                maxLength={500}
+                placeholder="How much did I sell today?"
+              />
+              <button className="secondary" disabled={t.busy}>
+                Ask my book
+                <ArrowRight size={16} />
+              </button>
+            </form>
+            {answer && (
+              <p className="query-answer" role="status">
+                {answer}
+              </p>
+            )}
+          </section>
+        </div>
+      )}
+    </>
+  );
 }
-function DraftEditor({draft:d,data,onChange,onDone}:{draft:DraftView;data:Workspace;onChange:(d:DraftView)=>void;onDone:(message:string)=>Promise<void>}){
-  const [c,setC]=useState<Candidate>(d.candidate);const [dirty,setDirty]=useState(false);const [confirm,setConfirm]=useState(false);const [basis,setBasis]=useState(d.candidate.unitPrice?'unit':'total');const t=useTask();
-  const set=<K extends keyof Candidate>(key:K,value:Candidate[K])=>{setC(v=>({...v,[key]:value}));setDirty(true);setConfirm(false);};
-  const ready=d.state==='ready_for_confirmation'&&!dirty;
-  return <section className="card draft-editor"><div className="section-heading"><div><span className="badge mint">{ready?'READ BACK & CONFIRM':'LET’S GET THE DETAILS RIGHT'}</span><h2>{d.replacesId?'Correct your record':'Review your business record'}</h2></div><span className="small muted">Version {d.version}</span></div>{d.source==='fixture'&&<div className="notice warning">Scripted fixture transcript · synthetic demo entry</div>}{d.transcript&&<blockquote>“{d.transcript}”</blockquote>}
-    {!!d.candidate.unresolvedFields.length&&<div className="clarifications" role="status"><h3>A few details to clarify</h3><ul>{d.candidate.unresolvedFields.map(v=><li key={v}>{v}</li>)}</ul></div>}
-    <form onSubmit={e=>{e.preventDefault();void t.run(async()=>{const next=await api<DraftView>({action:'revise',id:d.id,version:d.version,candidate:c});onChange(next);});}}><div className="form-grid"><label>Kind of record<select value={c.type??''} onChange={e=>set('type',(e.target.value||null) as Candidate['type'])} required><option value="">Choose a kind</option>{Object.entries(typeLabels).map(([k,v])=><option key={k} value={k}>{v}</option>)}</select></label><label>Item or description<input value={c.item??''} onChange={e=>set('item',e.target.value||null)} required maxLength={160} placeholder="e.g. Rice"/></label><label>Date in Lagos<input type="date" value={c.eventDate??''} onChange={e=>set('eventDate',e.target.value||null)} max={lagosDate()} required/></label><label>Customer / supplier alias<input value={c.counterparty??''} onChange={e=>set('counterparty',e.target.value||null)} maxLength={80} placeholder="e.g. Amina (required for credit)"/></label><label>Quantity (optional)<input inputMode="decimal" value={c.quantity??''} onChange={e=>set('quantity',e.target.value||null)} placeholder="e.g. 5"/></label><label>Unit (optional)<input value={c.unit??''} onChange={e=>set('unit',e.target.value||null)} maxLength={30} placeholder="e.g. bags"/></label><label>Is the amount total or per unit?<select value={basis} onChange={e=>{setBasis(e.target.value);setC(v=>({...v,total:null,unitPrice:null}));setDirty(true);setConfirm(false);}}><option value="total">Total for the whole record</option><option value="unit">Price for each unit</option></select></label><label>{basis==='total'?'Total amount (₦)':'Unit price (₦)'}<input inputMode="decimal" value={(basis==='total'?c.total:c.unitPrice)??''} onChange={e=>{setC(v=>({...v,total:basis==='total'?(e.target.value||null):null,unitPrice:basis==='unit'?(e.target.value||null):null}));setDirty(true);setConfirm(false);}} required placeholder="40000.00"/></label>
-      {c.type==='COLLECTION'||c.type==='SUPPLIER_PAYMENT'?<label className="full">Which original debt?<select value={c.debtActivityId??''} onChange={e=>set('debtActivityId',e.target.value||null)} required><option value="">Choose a confirmed record</option>{data.activities.filter(a=>!a.voidedAt&&(c.type==='COLLECTION'?a.type==='SALE':a.type!=='SALE')).map(a=><option key={a.id} value={a.id}>{a.counterparty} · {a.item} · {a.eventDate} · {currency(a.amount)}</option>)}</select></label>:<><label>Payment status<select value={c.paymentState??''} onChange={e=>set('paymentState',(e.target.value||null) as Candidate['paymentState'])} required><option value="">Was any payment made?</option><option value="paid">Paid in full</option><option value="unpaid">Unpaid / on credit</option><option value="partial">Partly paid</option></select></label>{c.paymentState==='partial'&&<label>Amount already paid (₦)<input inputMode="decimal" value={c.amountPaid??''} onChange={e=>set('amountPaid',e.target.value||null)} required/></label>}</>}
-    </div><Feedback error={t.error}/><button className="secondary" disabled={t.busy}><RotateCcw size={17}/>Update draft & read back</button></form>
-    {ready&&<div className="readback"><div className="eyebrow">PLEASE CHECK BEFORE SAVING</div><h3>{typeLabels[c.type!]} · {c.item}</h3><p>On <strong>{c.eventDate}</strong>, {c.quantity?`${c.quantity} ${c.unit??'units'}, `:''}total <strong>{currency(kobo(c.total!))}</strong>{c.counterparty?`, with ${c.counterparty}`:''}.</p><p>{c.type==='COLLECTION'||c.type==='SUPPLIER_PAYMENT'?'This payment will settle only the selected debt.':`Payment: ${c.paymentState}. Paid ₦${c.amountPaid??'0'}. Outstanding ₦${c.outstandingAmount??'0'}.`}</p><p className="small muted">Text read-back only. Voice confirmation and speech output are not connected.</p><label className="consent"><input type="checkbox" checked={confirm} onChange={e=>setConfirm(e.target.checked)}/><span>I have checked this version. These details are correct.</span></label></div>}
-    <div className="button-row"><button className="primary" disabled={!ready||!confirm||t.busy} onClick={()=>void t.run(async()=>{await api({action:'confirm',id:d.id,version:d.version,confirmed:true});await onDone('Record confirmed and saved. Your ledger is up to date.');})}><Check size={18}/>{t.busy?'Saving…':'Confirm & save record'}</button><button className="text-button" disabled={t.busy} onClick={()=>void t.run(async()=>{await api({action:'cancel',id:d.id,version:d.version});await onDone('Draft cancelled. Nothing was added to your ledger.');})}><X size={16}/>Cancel draft</button></div><p className="small muted">{dirty?'Your edits need a new read-back. Update the draft before confirming.':'Drafts are saved privately and do not affect your ledger.'}</p>
-  </section>;
+function DraftEditor({
+  draft: d,
+  data,
+  onChange,
+  onDone,
+}: {
+  draft: DraftView;
+  data: Workspace;
+  onChange: (d: DraftView) => void;
+  onDone: (message: string) => Promise<void>;
+}) {
+  const [c, setC] = useState<Candidate>(d.candidate);
+  const [dirty, setDirty] = useState(false);
+  const [confirm, setConfirm] = useState(false);
+  const [basis, setBasis] = useState(d.candidate.unitPrice ? 'unit' : 'total');
+  const t = useTask();
+  const set = <K extends keyof Candidate>(key: K, value: Candidate[K]) => {
+    setC((v) => ({ ...v, [key]: value }));
+    setDirty(true);
+    setConfirm(false);
+  };
+  const ready = d.state === 'ready_for_confirmation' && !dirty;
+  return (
+    <section className="card draft-editor">
+      <div className="section-heading">
+        <div>
+          <span className="badge mint">
+            {ready ? 'READ BACK & CONFIRM' : 'LET’S GET THE DETAILS RIGHT'}
+          </span>
+          <h2>{d.replacesId ? 'Correct your record' : 'Review your business record'}</h2>
+        </div>
+        <span className="small muted">Version {d.version}</span>
+      </div>
+      {d.source === 'fixture' && (
+        <div className="notice warning">Scripted fixture transcript · synthetic demo entry</div>
+      )}
+      {d.transcript && <blockquote>“{d.transcript}”</blockquote>}
+      {!!d.candidate.unresolvedFields.length && (
+        <div className="clarifications" role="status">
+          <h3>A few details to clarify</h3>
+          <ul>
+            {d.candidate.unresolvedFields.map((v) => (
+              <li key={v}>{v}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          void t.run(async () => {
+            const next = await api<DraftView>({
+              action: 'revise',
+              id: d.id,
+              version: d.version,
+              candidate: c,
+            });
+            onChange(next);
+          });
+        }}
+      >
+        <div className="form-grid">
+          <label>
+            Kind of record
+            <select
+              value={c.type ?? ''}
+              onChange={(e) => set('type', (e.target.value || null) as Candidate['type'])}
+              required
+            >
+              <option value="">Choose a kind</option>
+              {Object.entries(typeLabels).map(([k, v]) => (
+                <option key={k} value={k}>
+                  {v}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Item or description
+            <input
+              value={c.item ?? ''}
+              onChange={(e) => set('item', e.target.value || null)}
+              required
+              maxLength={160}
+              placeholder="e.g. Rice"
+            />
+          </label>
+          <label>
+            Date in Lagos
+            <input
+              type="date"
+              value={c.eventDate ?? ''}
+              onChange={(e) => set('eventDate', e.target.value || null)}
+              max={lagosDate()}
+              required
+            />
+          </label>
+          <label>
+            Customer / supplier alias
+            <input
+              value={c.counterparty ?? ''}
+              onChange={(e) => set('counterparty', e.target.value || null)}
+              maxLength={80}
+              placeholder="e.g. Amina (required for credit)"
+            />
+          </label>
+          <label>
+            Quantity (optional)
+            <input
+              inputMode="decimal"
+              value={c.quantity ?? ''}
+              onChange={(e) => set('quantity', e.target.value || null)}
+              placeholder="e.g. 5"
+            />
+          </label>
+          <label>
+            Unit (optional)
+            <input
+              value={c.unit ?? ''}
+              onChange={(e) => set('unit', e.target.value || null)}
+              maxLength={30}
+              placeholder="e.g. bags"
+            />
+          </label>
+          <label>
+            Is the amount total or per unit?
+            <select
+              value={basis}
+              onChange={(e) => {
+                setBasis(e.target.value);
+                setC((v) => ({ ...v, total: null, unitPrice: null }));
+                setDirty(true);
+                setConfirm(false);
+              }}
+            >
+              <option value="total">Total for the whole record</option>
+              <option value="unit">Price for each unit</option>
+            </select>
+          </label>
+          <label>
+            {basis === 'total' ? 'Total amount (₦)' : 'Unit price (₦)'}
+            <input
+              inputMode="decimal"
+              value={(basis === 'total' ? c.total : c.unitPrice) ?? ''}
+              onChange={(e) => {
+                setC((v) => ({
+                  ...v,
+                  total: basis === 'total' ? e.target.value || null : null,
+                  unitPrice: basis === 'unit' ? e.target.value || null : null,
+                }));
+                setDirty(true);
+                setConfirm(false);
+              }}
+              required
+              placeholder="40000.00"
+            />
+          </label>
+          {c.type === 'COLLECTION' || c.type === 'SUPPLIER_PAYMENT' ? (
+            <label className="full">
+              Which original debt?
+              <select
+                value={c.debtActivityId ?? ''}
+                onChange={(e) => set('debtActivityId', e.target.value || null)}
+                required
+              >
+                <option value="">Choose a confirmed record</option>
+                {data.activities
+                  .filter(
+                    (a) =>
+                      !a.voidedAt &&
+                      (c.type === 'COLLECTION' ? a.type === 'SALE' : a.type !== 'SALE'),
+                  )
+                  .map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.counterparty} · {a.item} · {a.eventDate} · {currency(a.amount)}
+                    </option>
+                  ))}
+              </select>
+            </label>
+          ) : (
+            <>
+              <label>
+                Payment status
+                <select
+                  value={c.paymentState ?? ''}
+                  onChange={(e) =>
+                    set('paymentState', (e.target.value || null) as Candidate['paymentState'])
+                  }
+                  required
+                >
+                  <option value="">Was any payment made?</option>
+                  <option value="paid">Paid in full</option>
+                  <option value="unpaid">Unpaid / on credit</option>
+                  <option value="partial">Partly paid</option>
+                </select>
+              </label>
+              {c.paymentState === 'partial' && (
+                <label>
+                  Amount already paid (₦)
+                  <input
+                    inputMode="decimal"
+                    value={c.amountPaid ?? ''}
+                    onChange={(e) => set('amountPaid', e.target.value || null)}
+                    required
+                  />
+                </label>
+              )}
+            </>
+          )}
+        </div>
+        <Feedback error={t.error} />
+        <button className="secondary" disabled={t.busy}>
+          <RotateCcw size={17} />
+          Update draft & read back
+        </button>
+      </form>
+      {ready && (
+        <div className="readback">
+          <div className="eyebrow">PLEASE CHECK BEFORE SAVING</div>
+          <h3>
+            {typeLabels[c.type!]} · {c.item}
+          </h3>
+          <p>
+            On <strong>{c.eventDate}</strong>,{' '}
+            {c.quantity ? `${c.quantity} ${c.unit ?? 'units'}, ` : ''}total{' '}
+            <strong>{currency(kobo(c.total!))}</strong>
+            {c.counterparty ? `, with ${c.counterparty}` : ''}.
+          </p>
+          <p>
+            {c.type === 'COLLECTION' || c.type === 'SUPPLIER_PAYMENT'
+              ? 'This payment will settle only the selected debt.'
+              : `Payment: ${c.paymentState}. Paid ${currency(kobo(c.amountPaid ?? '0'))}. Outstanding ${currency(kobo(c.outstandingAmount ?? '0'))}.`}
+          </p>
+          <p className="small muted">
+            Text read-back only. Voice confirmation and speech output are not connected.
+          </p>
+          <label className="consent">
+            <input
+              type="checkbox"
+              checked={confirm}
+              onChange={(e) => setConfirm(e.target.checked)}
+            />
+            <span>I have checked this version. These details are correct.</span>
+          </label>
+        </div>
+      )}
+      <div className="button-row">
+        <button
+          className="primary"
+          disabled={!ready || !confirm || t.busy}
+          onClick={() =>
+            void t.run(async () => {
+              await api({ action: 'confirm', id: d.id, version: d.version, confirmed: true });
+              await onDone('Record confirmed and saved. Your ledger is up to date.');
+            })
+          }
+        >
+          <Check size={18} />
+          {t.busy ? 'Saving…' : 'Confirm & save record'}
+        </button>
+        <button
+          className="text-button"
+          disabled={t.busy}
+          onClick={() =>
+            void t.run(async () => {
+              await api({ action: 'cancel', id: d.id, version: d.version });
+              await onDone('Draft cancelled. Nothing was added to your ledger.');
+            })
+          }
+        >
+          <X size={16} />
+          Cancel draft
+        </button>
+      </div>
+      <p className="small muted">
+        {dirty
+          ? 'Your edits need a new read-back. Update the draft before confirming.'
+          : 'Drafts are saved privately and do not affect your ledger.'}
+      </p>
+    </section>
+  );
 }

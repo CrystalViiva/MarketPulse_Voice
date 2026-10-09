@@ -10,6 +10,8 @@ Node **24.19.0**, npm **11.17.0**, PostgreSQL **17.10**. Use `npm.cmd`; the mach
 
 The local cluster is `.local/postgres`, bound to `127.0.0.1:5434`. Its databases are `marketpulse_dev`, `marketpulse_test` and `marketpulse_demo`. The pre-existing PostgreSQL service on port 5432 was not changed. `.env` contains locally generated secrets; do not commit or print it.
 
+At handoff a built copy is running at **http://localhost:3000**; use it directly. Its process ID and logs are in ignored `.local/app.pid`, `.local/app.log` and `.local/app-error.log`. After that process stops, `npm.cmd start` runs the existing build in your terminal. Use the setup/development commands below when installing or changing the application; do not start a second app on the same port.
+
 ```powershell
 # Only if the local database is stopped:
 powershell -ExecutionPolicy Bypass -File scripts/local-db.ps1 start
@@ -21,7 +23,7 @@ npm.cmd run db:deploy
 npm.cmd run dev
 ```
 
-Open **http://localhost:3000**. Create your own account (12-character minimum password) and business. Select **real business** for manual entries or **isolated demo** for synthetic workflow exploration. A demo business never contributes to real trader evaluation. To enable labelled fixture examples set `TRANSCRIPTION_MODE=fixture` in `.env`, then restart. The initial default is `disabled`.
+Open **http://localhost:3000**. Create your own account (12-character minimum password) and business. Select **real business** for manual entries or **isolated demo** for synthetic workflow exploration. A demo business never contributes to real trader evaluation. This prepared workspace deliberately sets `TRANSCRIPTION_MODE=fixture` so demo businesses can try labelled examples. Fresh setup and `.env.example` default to `disabled`; change that setting and restart to enable the examples. Real businesses cannot use fixture transcription.
 
 If registry lookups stall on this Windows network, use `$env:NODE_OPTIONS='--dns-result-order=ipv4first'` in that terminal. This does not disable certificate checks.
 
@@ -41,20 +43,22 @@ For free text, the narrow parser recognises explicit totals such as `Sold rice f
 
 ## Commands
 
-| Command | Purpose / database |
-|---|---|
-| `npm.cmd run dev` | Local app using `DATABASE_URL`; port 3000 |
-| `npm.cmd run build` | Generate Prisma client and build production bundle |
-| `npm.cmd start` | Run built app locally using `DATABASE_URL` |
-| `npm.cmd run lint` / `typecheck` | Static checks, no financial writes |
-| `npm.cmd test` | Deploy migrations to **TEST_DATABASE_URL**, then unit + PostgreSQL tests; refuses a non-test database |
-| `npx.cmd playwright install chromium` | Install local browser used for browser verification |
-| `npm.cmd run test:e2e` | Dedicated test server on 3100, test DB, synthetic accounts; `.next-e2e` build directory |
-| `npm.cmd run db:generate` | Generate Prisma client, no schema mutation |
-| `npm.cmd run db:migrate -- --name description` | Developer migration creation on `DATABASE_URL`; use only a development database |
-| `npm.cmd run db:deploy` | Apply committed migrations on `DATABASE_URL` |
-| `npm.cmd run db:seed:demo` | Idempotent seed, **only DEMO_DATABASE_URL** ending in `/marketpulse_demo`; refuses production |
-| `npm.cmd run check:env` | Report names/status only; never secrets |
+| Command                                        | Purpose / database                                                                                                                 |
+| ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `npm.cmd run dev`                              | Local app using `DATABASE_URL`; port 3000                                                                                          |
+| `npm.cmd run build`                            | Generate Prisma client and build production bundle                                                                                 |
+| `npm.cmd start`                                | Run built app locally using `DATABASE_URL`                                                                                         |
+| `npm.cmd run lint` / `typecheck`               | Static checks, no financial writes                                                                                                 |
+| `npm.cmd test`                                 | Deploy migrations to **TEST_DATABASE_URL**, then unit + PostgreSQL tests; refuses a non-test database                              |
+| `npx.cmd playwright install chromium`          | Needed only without installed Windows Chrome; browser tests automatically use that Chrome when present                             |
+| `npm.cmd run test:e2e`                         | Dedicated test server on 3100, test DB, synthetic accounts; `.next-e2e` build directory                                            |
+| `npm.cmd run test:production`                  | After build and demo seed: built app on 3101, confirms exact totals and session persistence across a process restart; demo DB only |
+| `npm.cmd run format`                           | Format source, scripts, tests and handoff documents                                                                                |
+| `npm.cmd run db:generate`                      | Generate Prisma client, no schema mutation                                                                                         |
+| `npm.cmd run db:migrate -- --name description` | Developer migration creation on `DATABASE_URL`; use only a development database                                                    |
+| `npm.cmd run db:deploy`                        | Apply committed migrations on `DATABASE_URL`                                                                                       |
+| `npm.cmd run db:seed:demo`                     | Idempotent seed, **only DEMO_DATABASE_URL** ending in `/marketpulse_demo`; refuses production                                      |
+| `npm.cmd run check:env`                        | Report names/status only; never secrets                                                                                            |
 
 Demo credentials are generated into ignored `.local/demo-login.txt`. To view seeded examples, start the app with `DATABASE_URL` set to the demo URL and `TRANSCRIPTION_MODE=fixture`; use a separate terminal and restore your environment afterward. Tests create only synthetic businesses in the test database. Production must use a fourth, separate database and `TRANSCRIPTION_MODE=disabled`.
 

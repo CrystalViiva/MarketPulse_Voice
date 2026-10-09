@@ -1,0 +1,10 @@
+node_modules
+.next
+.next-e2e
+.local
+package-lock.json
+prisma/migrations
+MarketPulse-Voice-Build-Package.md
+test-results
+playwright-report
+next-env.d.ts
