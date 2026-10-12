@@ -35,6 +35,8 @@ export function RecordPanel({
   setDraft: (d: DraftView | null) => void;
   refresh: () => Promise<void>;
 }) {
+  const [language, setLanguage] = useState<'en' | 'yo' | 'ig' | 'ha'>('en');
+  const languageNames = { en: 'Nigerian English', yo: 'Yoruba', ig: 'Igbo', ha: 'Hausa' };
   const t = useTask();
   const [consent, setConsent] = useState(false);
   const [recording, setRecording] = useState(false);
@@ -121,7 +123,7 @@ export function RecordPanel({
       setSuccess('');
       const form = new FormData();
       form.set('consent', 'true');
-      form.set('language', 'en-NG');
+      form.set('language', language);
       form.set('mode', fixtureId ? 'fixture' : 'live');
       if (fixtureId) {
         form.set('fixtureId', fixtureId);
@@ -199,10 +201,27 @@ export function RecordPanel({
             <div className="section-heading">
               <span className="badge neutral">
                 <span className="status-dot" />
-                Nigerian English · voice pending
+                {languageNames[language]} ·{' '}
+                {data.capabilities.liveAsr
+                  ? 'N-ATLAS configured; availability checked on use'
+                  : 'N-ATLAS setup required'}
               </span>
               <span className="small muted">30 sec maximum</span>
             </div>
+            <label>
+              Speech language
+              <select
+                aria-label="Speech language"
+                value={language}
+                disabled={recording || t.busy}
+                onChange={(event) => setLanguage(event.target.value as typeof language)}
+              >
+                <option value="en">Nigerian English</option>
+                <option value="yo">Yoruba</option>
+                <option value="ig">Igbo</option>
+                <option value="ha">Hausa</option>
+              </select>
+            </label>
             <div className="mic-area">
               <div className={'mic-halo ' + (recording ? 'recording' : '')}>
                 <button
@@ -252,8 +271,9 @@ export function RecordPanel({
                 onChange={(e) => setConsent(e.target.checked)}
               />
               <span>
-                I agree to process this recording for my business record. Audio is discarded after
-                the request. Live ASR is currently unavailable.
+                I agree to process this recording for my business record. Audio is not retained by
+                this app after the request; when configured, it is sent to the N-ATLAS gateway for
+                transcription.
               </span>
             </label>
             {audio && (
@@ -307,7 +327,9 @@ export function RecordPanel({
               </button>
             </div>
             <p className="small muted center">
-              Live provider not connected. Audio is never replaced with a demo transcript.
+              {data.capabilities.liveAsr
+                ? 'N-ATLAS availability is checked when you send. Audio is never replaced with a demo transcript.'
+                : 'N-ATLAS is not configured. Your audio will not be sent; manual entry remains available.'}
             </p>
             <div role="status" className="small center">
               {stage}
@@ -374,7 +396,7 @@ export function RecordPanel({
               <button
                 key={id}
                 className="secondary"
-                disabled={t.busy}
+                disabled={t.busy || language !== 'en'}
                 onClick={() => {
                   audioKey.current = crypto.randomUUID();
                   sendVoice(id);

@@ -2,16 +2,18 @@ import { db } from './db';
 import { Candidate } from './domain';
 import { createDraft, Scope } from './ledger';
 import { EnglishRulesInterpreter } from './providers';
+import { NatlasGateway } from './natlas';
 export async function interpretDraft(
   s: Scope,
   text: string,
   source: Candidate['source'],
   requestKey: string,
+  language = 'en',
 ) {
-  const provider = new EnglishRulesInterpreter();
+  const provider = source === 'voice' ? new NatlasGateway() : new EnglishRulesInterpreter();
   const start = Date.now();
   try {
-    const candidate = await provider.interpret(text, source);
+    const candidate = await provider.interpret(text, source, language);
     const draft = await createDraft(s, candidate, requestKey, text);
     await db.interaction.create({
       data: {
@@ -22,7 +24,7 @@ export async function interpretDraft(
         model: provider.identity.model,
         outcome: 'success',
         latencyMs: Date.now() - start,
-        language: 'en-NG',
+        language,
       },
     });
     return draft;
@@ -35,7 +37,7 @@ export async function interpretDraft(
         model: provider.identity.model,
         outcome: 'failed',
         latencyMs: Date.now() - start,
-        language: 'en-NG',
+        language,
       },
     });
     throw error;

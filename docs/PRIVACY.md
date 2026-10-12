@@ -1,8 +1,9 @@
 # Privacy and retention
 
-Prototype policy, 9 October 2026. Collect only account name/email, merchant-chosen aliases and the details needed for business records. Avoid customer phone numbers, account numbers and identity documents. No organiser communication or outside sharing happens automatically.
+Prototype policy, updated 12 October 2026. Collect only account name/email, merchant-chosen aliases and the details needed for business records. Avoid customer phone numbers, account numbers and identity documents. No organiser communication or outside sharing happens automatically.
 
 - Recording requires a consent checkbox. Audio stays in browser memory until submitted, is not logged, and is discarded after the server request. Unsent audio disappears when the page closes.
+- When an authorized N-ATLAS gateway is configured, the app sends the audio to its transcription endpoint and sends the returned transcript to its chat endpoint for a structured suggestion. The app does not retain the original audio. Draft transcripts and confirmed financial data are stored in the app database. The gateway operator's retention, access and deletion practices are separate and must be reviewed before enabling live use; this app cannot promise upstream deletion.
 - Draft transcripts and versions persist behind merchant authentication so interrupted workflows can resume. Provider outcomes contain identity, outcome, duration and language, not audio/transcript text.
 - Evidence files persist privately in PostgreSQL with merchant, actor, source and creation time. Downloads require ownership. Content is treated as untrusted; PDF/images download as attachments. Malware scanning is not implemented; only trusted test documents should be used in this prototype.
 - Settings → Delete private supporting material removes all evidence, draft transcripts, evaluation sessions and shared report snapshots for the current business. Per-file deletion is also available in Ledger. Financial activity, aliases, draft versions, account records and audit history remain. There is no claim of complete personal-data erasure.

@@ -5,7 +5,7 @@ export interface TranscriptionProvider {
 }
 export interface InterpretationProvider {
   identity: { provider: string; model: string };
-  interpret(text: string, source: Candidate['source']): Promise<Candidate>;
+  interpret(text: string, source: Candidate['source'], language?: string): Promise<Candidate>;
 }
 export interface SpeechProvider {
   speak(text: string, language: string): Promise<{ audio: Buffer; mime: string }>;
@@ -20,18 +20,9 @@ export const fixtures: Record<string, string> = {
 export class FixtureTranscriber implements TranscriptionProvider {
   identity = { provider: 'fixture', model: 'scripted-demo-v1' };
   async transcribe(_audio: Buffer, language: string, fixtureId?: string) {
-    if (language !== 'en-NG' || !fixtureId || !fixtures[fixtureId])
+    if (language !== 'en' || !fixtureId || !fixtures[fixtureId])
       throw new AppError('Choose a labelled English demo example.');
     return { text: fixtures[fixtureId] };
-  }
-}
-export class UnavailableNatlasTranscriber implements TranscriptionProvider {
-  identity = { provider: 'N-ATLAS-unavailable', model: 'NCAIR1/NigerianAccentedEnglish' };
-  async transcribe(): Promise<{ text: string }> {
-    throw new AppError(
-      'Live N-ATLAS transcription is not connected. Your audio has not been sent to a provider. Keep the recording to retry, or use manual entry.',
-      503,
-    );
   }
 }
 // A deliberately narrow, deterministic English parser. This is NOT N-ATLAS

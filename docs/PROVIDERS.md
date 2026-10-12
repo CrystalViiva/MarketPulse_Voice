@@ -1,30 +1,45 @@
 # Provider integration register
 
-Checked **9 October 2026**. No provider credentials were found in the workspace environment. No live audio inference was performed. `src/lib/providers.ts` defines transcription, interpretation and optional speech-output interfaces.
+Updated 12 October 2026. The application now contains a server-side adapter for the documented N-ATLAS gateway. Automated adapter tests use simulated HTTP responses. No live N-ATLAS request or real-audio accuracy test has been performed in this workspace; valid gateway credentials and an authorized gateway URL are still required.
 
-| Capability                     | Implemented path                                                | Tested claim                                                   |
-| ------------------------------ | --------------------------------------------------------------- | -------------------------------------------------------------- |
-| Nigerian English transcription | Unavailable live adapter; deliberate scripted fixture adapter   | Fixtures exercise workflow only; no real accuracy result       |
-| Interpretation                 | Limited deterministic English rules plus structured manual form | Explicit values only, schema validated, merchant clarification |
-| Speech output                  | Interface boundary only                                         | Not implemented; text read-back                                |
-| Voice confirmation/correction  | Accessible buttons/form                                         | Not voice-operated                                             |
-| Yoruba/Hausa/Igbo/Pidgin       | No live adapter selected                                        | No tested language capability                                  |
-| WhatsApp                       | Deferred                                                        | No webhook/credential integration                              |
+| Capability                                | Implementation                                                                                                     | Current evidence                                                                              |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------- |
+| Speech transcription                      | `NatlasGateway.transcribe` posts WAV audio and an explicit language to `/v1/audio/transcriptions`.                 | Mocked contract tests only; live access unknown.                                              |
+| Spoken transaction extraction             | Transcript goes to N-ATLAS `/v1/chat/completions`; strict candidate parsing and existing domain validation follow. | Mocked response tests only; no accuracy claim.                                                |
+| Merchant review and confirmation          | Existing versioned draft, clarification, read-back and explicit confirmation are reused.                           | Existing domain, database and browser tests; full browser suite not rerun during this change. |
+| English, Yoruba, Igbo and Hausa selection | UI and server accept `en`, `yo`, `ig`, `ha`. The demo fixture is restricted to English.                            | Selection and contract are source-backed; language quality requires live tests with speakers. |
+| Speech output                             | Not implemented. Read-back is displayed as text.                                                                   | Unavailable.                                                                                  |
 
-## Verified publisher material
+## Official gateway contract
 
-[NCAIR1/NigerianAccentedEnglish model card](https://huggingface.co/NCAIR1/NigerianAccentedEnglish) documents a gated Whisper-small derivative for Nigerian-accented English, accessed through approved Hugging Face model downloads. Local inference uses Transformers ASR, recommends 16 kHz audio and demonstrates WAV loading and a `text` result. It lists a 30-second inference context. The page reports no hosted Inference Provider deployment. It is **not** a published official ASR HTTP API contract: authentication headers, upload envelope, content types, error/response schema and service URL remain unverified.
+The [N-ATLAS Quickstart](https://natlas-docs.vercel.app/quickstart), [Gateway API](https://natlas-docs.vercel.app/gateway), [JavaScript SDK reference](https://natlas-docs.vercel.app/sdk/javascript), [integration notes](https://natlas-docs.vercel.app/integration) and [self-hosting guide](https://natlas-docs.vercel.app/self-hosting) describe an authenticated gateway. The app uses the documented HTTP API directly; no SDK package was added.
 
-The model terms include attribution and research/innovation restrictions, with commercial licensing considerations; review the publisher's exact terms before deployment. Approval to download model weights and permission to use a hosted service are separate questions. We have not accepted terms for the user or downloaded gated weights.
+- ASR: multipart `POST /v1/audio/transcriptions`, `Authorization: Bearer …`, `file`, `language`, and JSON response `{ "text": "…" }`.
+- Interpretation: JSON `POST /v1/chat/completions`, same Bearer authentication, model `NCAIR1/N-ATLaS`, and OpenAI-shaped `choices[0].message.content` response.
+- Supported speech codes: `en` (Nigerian-accented English), `yo` (Yoruba), `ig` (Igbo), `ha` (Hausa). The gateway selects a language-specific ASR checkpoint.
+- The browser currently normalizes recorded/uploaded audio to mono 16 kHz, 16-bit PCM WAV. The server validates that format, a maximum of 30 seconds and a 1 MB payload before forwarding it. This is narrower than the gateway's documented ffmpeg-compatible audio inputs.
+- Requests have a configurable timeout (`NATLAS_TIMEOUT_MS`, default 60 seconds). Non-success responses, malformed JSON, blank transcripts and invalid model output fail without saving a transaction. The browser retains audio for retry after a provider failure.
+- Model responses are treated as untrusted. The app accepts one strict candidate, normalizes it through existing financial validation, and requires the merchant to resolve missing fields, review and confirm.
 
-[NCAIR1/N-ATLaS](https://huggingface.co/NCAIR1/N-ATLaS) documents a gated Llama-based text model and local Transformers generation. It lists English, Hausa, Igbo and Yoruba. Its examples are local text generation, not a validated structured bookkeeping response or an ASR endpoint. The [NCAIR model catalogue](https://huggingface.co/NCAIR1/models) lists separate ASR models. None have been tested in this app. Pidgin is not inferred from training-data mentions or general marketing.
+## Configuration and privacy
 
-## Activate a genuine integration
+Set `NATLAS_BASE_URL`, `NATLAS_API_KEY`, optional `NATLAS_MODEL` (defaults to `NCAIR1/N-ATLaS`) and optional `NATLAS_TIMEOUT_MS` in the server environment. The gateway URL is an authorized deployment URL; the documented public demo gateway does not publish a client key. Do not use the Hugging Face download token as the gateway Bearer key. Credentials must stay server-side and must never use a `NEXT_PUBLIC_` name.
 
-1. Obtain official ASR service documentation and authorised credentials/access. Confirm whether running official weights locally satisfies the Voice-First service rule; do not assume it does.
-2. Record version/model/revision, language, endpoint, auth method, request envelope, accepted audio encoding, duration, response schema, rate limits and privacy/retention terms. Keep credentials only in server environment variables.
-3. Implement `TranscriptionProvider` to that exact verified contract. Validate responses with Zod and enforce a timeout. Never silently select another provider or fixture. Store only provider/model/outcome/latency in Interaction.
-4. Run a small consented smoke test with a known phrase and language assessor. Record expected/actual transcript, numeric accuracy, latency and request outcome without publishing raw audio or personal data.
-5. Enable the capability only after that test, update UI status and this register, then conduct real trader evaluation. A provider's language listing is not proof of application-level interpretation or spoken-output quality.
+The app does not call `/health` to claim the integration is connected. A complete-looking configuration only changes the UI to say the gateway is configured; actual authentication and service availability are checked by an inference request. A missing configuration produces a recoverable response and leaves manual entry available. The gateway's own retention, operator access, rate limits and privacy terms must be reviewed for the selected deployment. The app does not retain original audio; a successfully interpreted draft stores transcript text until the user deletes private materials. Do not claim upstream audio deletion based only on the app not storing a copy.
 
-The browser normalizes audio to mono 16-bit PCM WAV at 16 kHz and rejects clips over 30 seconds. The server independently validates WAV structure, encoding, size and duration. Raw audio is never stored. The fixture adapter ignores audio and returns a visibly scripted example selected by the user. It is gated by `TRANSCRIPTION_MODE=fixture` and business mode `demo`.
+## N-ATLAS access and model terms
+
+The official self-hosting guide says the model repositories are gated and require acceptance of the model terms. It describes a hosted Modal deployment and a Docker Compose deployment requiring an NVIDIA GPU with roughly 24 GB of VRAM for the 8B language model; that hardware is not assumed available for this local Windows app. The official quickstart says the published challenge demo gateway requires a Bearer key for inference and does not publish that key. Obtain authorized gateway access or operate an approved deployment before live use. Review model licensing and usage terms independently.
+
+## Verification record
+
+| Claim                                                    | Status                                                 |
+| -------------------------------------------------------- | ------------------------------------------------------ |
+| Adapter uses documented endpoint paths and request forms | Source and mocked tests                                |
+| API key is only read in server code                      | Source inspection                                      |
+| Valid live gateway credentials are configured            | Unknown; never print or share credentials              |
+| Live `/health`, transcription or chat request succeeded  | Not tested                                             |
+| Language-specific transcription quality                  | Not tested; no native-speaker or real-audio evaluation |
+| Real trader validation sessions                          | 0 recorded in the existing field-test record           |
+
+Manual bookkeeping remains usable without the gateway. The fixtures are fixed synthetic examples and are never an automatic fallback for real audio.

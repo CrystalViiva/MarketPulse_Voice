@@ -46,6 +46,36 @@ if (process.env.APP_ENV === 'production' && process.env.TRANSCRIPTION_MODE === '
   bad = true;
 }
 console.log(
-  'Live N-ATLAS ASR: unavailable; official hosted API contract and access are still required.',
+  `N-ATLAS configuration: ${
+    process.env.NATLAS_BASE_URL &&
+    process.env.NATLAS_API_KEY &&
+    !/your-authorized|\.example(?:\/|$)/i.test(process.env.NATLAS_BASE_URL) &&
+    !/^replace/i.test(process.env.NATLAS_API_KEY)
+      ? 'complete (live access not tested)'
+      : 'not configured (manual entry remains available)'
+  }`,
 );
+if (process.env.NATLAS_BASE_URL) {
+  try {
+    const url = new URL(process.env.NATLAS_BASE_URL);
+    if (!['https:', 'http:'].includes(url.protocol) || url.username || url.password)
+      throw new Error();
+  } catch {
+    console.error('NATLAS_BASE_URL: invalid URL configuration');
+    bad = true;
+  }
+}
+if (process.env.NATLAS_MODEL && !process.env.NATLAS_MODEL.startsWith('NCAIR1/')) {
+  console.error('NATLAS_MODEL: must use an NCAIR1 model identifier');
+  bad = true;
+}
+if (
+  process.env.NATLAS_TIMEOUT_MS &&
+  (!/^\d+$/.test(process.env.NATLAS_TIMEOUT_MS) ||
+    Number(process.env.NATLAS_TIMEOUT_MS) < 1000 ||
+    Number(process.env.NATLAS_TIMEOUT_MS) > 180000)
+) {
+  console.error('NATLAS_TIMEOUT_MS: use a whole number from 1000 to 180000');
+  bad = true;
+}
 process.exitCode = bad ? 1 : 0;

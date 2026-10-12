@@ -4,12 +4,8 @@ import { db } from '@/lib/db';
 import { AppError, transition } from '@/lib/domain';
 import { checkOrigin, failure, limitedForm, rateLimit, response, scope } from '@/lib/security';
 import { interpretDraft } from '@/lib/interpretation';
-import {
-  FixtureTranscriber,
-  interpretQuery,
-  UnavailableNatlasTranscriber,
-  validateWav,
-} from '@/lib/providers';
+import { FixtureTranscriber, interpretQuery, validateWav } from '@/lib/providers';
+import { NatlasGateway } from '@/lib/natlas';
 export async function POST(request: NextRequest) {
   let interactionId: string | undefined;
   const start = Date.now();
@@ -24,7 +20,7 @@ export async function POST(request: NextRequest) {
       throw new AppError('Consent is required before processing a recording.');
     const key = z.string().min(8).max(100).parse(form.get('requestKey'));
     const mode = form.get('mode');
-    const language = z.literal('en-NG').parse(form.get('language'));
+    const language = z.enum(['en', 'yo', 'ig', 'ha']).parse(form.get('language'));
     const existing = await db.draft.findUnique({
       where: { businessId_requestKey: { businessId: s.businessId, requestKey: key } },
     });
@@ -43,8 +39,7 @@ export async function POST(request: NextRequest) {
       audio = Buffer.from(await file.arrayBuffer());
       validateWav(audio);
     } else if (mode !== 'fixture') throw new AppError('Record or upload audio first.');
-    const provider =
-      mode === 'fixture' ? new FixtureTranscriber() : new UnavailableNatlasTranscriber();
+    const provider = mode === 'fixture' ? new FixtureTranscriber() : new NatlasGateway();
     const interaction = await db.interaction.create({
       data: {
         businessId: s.businessId,
@@ -75,6 +70,7 @@ export async function POST(request: NextRequest) {
       result.text,
       mode === 'fixture' ? 'fixture' : 'voice',
       key,
+      language,
     );
     await db.interaction.update({
       where: { id: interaction.id },

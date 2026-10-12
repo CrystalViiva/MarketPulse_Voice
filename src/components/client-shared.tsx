@@ -90,7 +90,7 @@ export function uploadForm<T>(
   return new Promise((resolve, reject) => {
     const request = new XMLHttpRequest();
     request.open('POST', url);
-    request.timeout = 90000;
+    request.timeout = 150000;
     phase('Uploading…');
     request.upload.onprogress = (event) => {
       if (event.lengthComputable)

@@ -2,6 +2,14 @@
 
 Verified **9 October 2026**, Windows PowerShell, Node 24.19.0, npm 11.17.0, PostgreSQL 17.10. All automated business examples below are synthetic. They are not trader validation or live ASR accuracy measurements.
 
+## Follow-up implementation check — 12 October 2026
+
+- N-ATLAS adapter, auth confirmation and language-selection changes: direct unit tests **passed** (16 tests across `tests/domain.test.ts` and `tests/natlas.test.ts`); lint, standalone TypeScript check, Prettier check and `npm.cmd run check:env` **passed**.
+- The environment check reported no N-ATLAS configuration. Mocked adapter tests are not live service evidence. No credentials were displayed.
+- Database integration tests and Playwright were not run: test/demo database availability is unverified, and this session must not create missing databases or run migrations without approval.
+- Production build and Prisma generation were not run because a running Node app may hold Prisma's Windows engine DLL; the running app was left undisturbed. Database-backed sign-in was not retested.
+- No database, migration, role, password, or `.env` changes were made. No real-user sessions or language accuracy metrics were collected.
+
 ## Environment and reproducibility
 
 - Dedicated PostgreSQL cluster `.local/postgres` accepts connections at `127.0.0.1:5434`. Separate dev, test and demo databases; existing port-5432 service untouched.

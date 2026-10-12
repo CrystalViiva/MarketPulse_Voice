@@ -4,8 +4,10 @@ One Next.js App Router application hosts React screens and server route handlers
 
 ```mermaid
 flowchart LR
-  R[Browser recording or audio upload] --> V[Server audio validation and provider boundary]
-  V --> D[Versioned draft]
+  R[Browser recording or audio upload] --> V[Server audio validation]
+  V --> A[N-ATLAS ASR when configured]
+  A --> I[N-ATLAS structured extraction]
+  I --> D[Validated versioned draft]
   M[Manual form or limited English rules] --> D
   D --> C[Clarification and read-back]
   C --> X[Explicit current-version confirmation]
@@ -20,6 +22,8 @@ flowchart LR
   E --> T
   T --> L[Expiring revocable snapshot]
 ```
+
+The voice route authenticates the account, resolves its business membership, checks origin and rate limits, requires audio consent, validates a bounded PCM WAV payload and language, then calls the configured N-ATLAS gateway. The transcript is sent to N-ATLAS chat for one strict candidate; Zod and the existing accounting normalizer reject malformed values and mark missing details for clarification. The client receives a draft, never a committed activity. It must be edited or clarified, read back and explicitly confirmed at the current version before ledger persistence. If gateway configuration or service is unavailable, the request fails safely and the manual entry path remains available. Adapter and provider details are in [PROVIDERS.md](PROVIDERS.md).
 
 ## Invariants
 

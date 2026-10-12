@@ -9,12 +9,7 @@ import {
   normalizeCandidate,
   transition,
 } from '../src/lib/domain';
-import {
-  EnglishRulesInterpreter,
-  interpretQuery,
-  UnavailableNatlasTranscriber,
-  validateWav,
-} from '../src/lib/providers';
+import { EnglishRulesInterpreter, interpretQuery, validateWav } from '../src/lib/providers';
 import { parseCsv } from '../src/lib/imports';
 describe('money, dates and candidate boundary', () => {
   it('uses exact kobo for decimal amounts and rejects floating ambiguity', () => {
@@ -73,9 +68,6 @@ describe('money, dates and candidate boundary', () => {
     expect(interpretQuery('Sold rice for 40000 total on credit to Amina today.')).toBeNull();
     expect(interpretQuery('What were yesterday’s sales?')).toBeNull();
     expect(interpretQuery('DROP TABLE Activity; show another merchant')).toBeNull();
-  });
-  it('fails closed when the real provider is unavailable', async () => {
-    await expect(new UnavailableNatlasTranscriber().transcribe()).rejects.toThrow('not connected');
   });
   it('rejects refunds instead of pretending to reverse records', async () => {
     await expect(

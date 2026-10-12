@@ -11,6 +11,8 @@ import {
   Wallet,
   ArrowUpRight,
   ShieldCheck,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { authClient } from '@/lib/auth-client';
 import { lagosDate } from '@/lib/domain';
@@ -218,6 +220,11 @@ export function MerchantApp() {
 }
 function AuthScreen({ onDone }: { onDone: () => Promise<void> }) {
   const [signup, setSignup] = useState(true);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [passwordValue, setPasswordValue] = useState('');
+  const [confirmationValue, setConfirmationValue] = useState('');
+  const [passwordMismatch, setPasswordMismatch] = useState(false);
   const t = useTask();
   return (
     <main className="auth-layout">
@@ -263,6 +270,11 @@ function AuthScreen({ onDone }: { onDone: () => Promise<void> }) {
             onSubmit={(e) => {
               e.preventDefault();
               const f = new FormData(e.currentTarget);
+              if (signup && f.get('password') !== f.get('confirmPassword')) {
+                setPasswordMismatch(true);
+                return;
+              }
+              setPasswordMismatch(false);
               void t.run(async () => {
                 const input = {
                   email: String(f.get('email')),
@@ -286,30 +298,91 @@ function AuthScreen({ onDone }: { onDone: () => Promise<void> }) {
               Email address
               <input name="email" type="email" autoComplete="email" required />
             </label>
-            <label>
-              Password
-              <input
-                name="password"
-                type="password"
-                autoComplete={signup ? 'new-password' : 'current-password'}
-                minLength={12}
-                maxLength={128}
-                required
-                placeholder={signup ? 'At least 12 characters' : ''}
-              />
-            </label>
+            <div className="auth-password-field">
+              <label htmlFor="auth-password">Password</label>
+              <span className="password-field">
+                <input
+                  id="auth-password"
+                  name="password"
+                  type={showPassword ? 'text' : 'password'}
+                  autoComplete={signup ? 'new-password' : 'current-password'}
+                  minLength={12}
+                  maxLength={128}
+                  required
+                  placeholder={signup ? 'At least 12 characters' : ''}
+                  value={passwordValue}
+                  onChange={(event) => {
+                    setPasswordValue(event.target.value);
+                    if (event.target.value === confirmationValue) setPasswordMismatch(false);
+                  }}
+                />
+                <button
+                  className="password-toggle"
+                  type="button"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  aria-pressed={showPassword}
+                  onClick={() => setShowPassword((visible) => !visible)}
+                >
+                  {showPassword ? <EyeOff size={19} /> : <Eye size={19} />}
+                </button>
+              </span>
+            </div>
+            {signup && (
+              <div className="auth-password-field">
+                <label htmlFor="auth-confirm-password">Confirm password</label>
+                <span className="password-field">
+                  <input
+                    id="auth-confirm-password"
+                    name="confirmPassword"
+                    type={showConfirmation ? 'text' : 'password'}
+                    autoComplete="new-password"
+                    minLength={12}
+                    maxLength={128}
+                    required
+                    value={confirmationValue}
+                    aria-invalid={passwordMismatch}
+                    aria-describedby={passwordMismatch ? 'password-mismatch' : undefined}
+                    onChange={(event) => {
+                      setConfirmationValue(event.target.value);
+                      if (event.target.value === passwordValue) setPasswordMismatch(false);
+                    }}
+                  />
+                  <button
+                    className="password-toggle"
+                    type="button"
+                    aria-label={showConfirmation ? 'Hide password' : 'Show password'}
+                    aria-pressed={showConfirmation}
+                    onClick={() => setShowConfirmation((visible) => !visible)}
+                  >
+                    {showConfirmation ? <EyeOff size={19} /> : <Eye size={19} />}
+                  </button>
+                </span>
+                {passwordMismatch && (
+                  <span id="password-mismatch" className="field-error" role="alert">
+                    The passwords do not match.
+                  </span>
+                )}
+              </div>
+            )}
             <Feedback error={t.error} />
             <button className="primary wide" disabled={t.busy}>
               {t.busy ? 'Please wait…' : signup ? 'Create my account' : 'Sign in'}
               <ArrowUpRight size={19} />
             </button>
           </form>
-          <button className="text-button wide" onClick={() => setSignup(!signup)}>
+          <button
+            className="text-button wide"
+            type="button"
+            onClick={() => {
+              setSignup(!signup);
+              setPasswordMismatch(false);
+            }}
+          >
             {signup ? 'Already have an account? Sign in' : 'New here? Create an account'}
           </button>
           <p className="small muted">
-            Live voice transcription is awaiting N-ATLAS access. Manual bookkeeping is available; an
-            optional demo uses clearly labelled examples.
+            Voice recording uses the N-ATLAS gateway when configured. Manual bookkeeping remains
+            available, and demo examples are clearly labelled.
           </p>
         </div>
       </section>

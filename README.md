@@ -2,7 +2,7 @@
 
 A mobile-first merchant book: record → clarify → read back → explicitly confirm → persistent ledger → private business report. One Next.js/TypeScript application, PostgreSQL, Prisma, Zod and Better Auth.
 
-**Live N-ATLAS ASR is not connected.** Manual bookkeeping works independently. Scripted transcripts are deliberately selected only in demo businesses when fixtures are enabled. This is not a completed voice-first competition submission. See [STATUS.md](STATUS.md) for verified results and blockers.
+The app includes a server-side adapter for the documented N-ATLAS gateway: audio transcription followed by structured transaction suggestions. Manual bookkeeping works without it. The workspace has not verified a live N-ATLAS request; configure an authorized gateway and key before relying on speech processing. Scripted transcripts are deliberately selected only in demo businesses when fixtures are enabled. This is not yet a completed voice-first competition submission.
 
 ## Run in this workspace (Windows PowerShell)
 
@@ -23,7 +23,11 @@ npm.cmd run db:deploy
 npm.cmd run dev
 ```
 
-Open **http://localhost:3000**. Create your own account (12-character minimum password) and business. Select **real business** for manual entries or **isolated demo** for synthetic workflow exploration. A demo business never contributes to real trader evaluation. This prepared workspace deliberately sets `TRANSCRIPTION_MODE=fixture` so demo businesses can try labelled examples. Fresh setup and `.env.example` default to `disabled`; change that setting and restart to enable the examples. Real businesses cannot use fixture transcription.
+Open **http://localhost:3000**. Create your own account (12-character minimum password) and business. Select **real business** for manual entries or **isolated demo** for synthetic workflow exploration. A demo business never contributes to real trader evaluation. This prepared workspace may set `TRANSCRIPTION_MODE=fixture` so demo businesses can try labelled examples. Fresh setup and `.env.example` default to `disabled`; change that setting and restart to enable the examples. Real businesses cannot use fixture transcription.
+
+## N-ATLAS setup
+
+In the local `.env` file, set `NATLAS_BASE_URL` to an authorized N-ATLAS gateway URL and `NATLAS_API_KEY` to a gateway Bearer key. Optionally set `NATLAS_MODEL` (default `NCAIR1/N-ATLaS`) and `NATLAS_TIMEOUT_MS` (default `60000`). Never put these values in browser code, commit them, or use the Hugging Face model-download token as the gateway key. `.env.example` contains placeholders only. A configured URL/key pair is not proof that the service works; the app checks service availability when a recording is submitted. The documented gateway accepts `en`, `yo`, `ig`, and `ha`. See [provider details and verification limits](docs/PROVIDERS.md).
 
 If registry lookups stall on this Windows network, use `$env:NODE_OPTIONS='--dns-result-order=ipv4first'` in that terminal. This does not disable certificate checks.
 

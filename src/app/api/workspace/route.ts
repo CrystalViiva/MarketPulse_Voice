@@ -3,6 +3,7 @@ import { db } from '@/lib/db';
 import { actor, failure, response, scope } from '@/lib/security';
 import { report } from '@/lib/reports';
 import { lagosDate } from '@/lib/domain';
+import { hasNatlasCredentials } from '@/lib/natlas';
 export const dynamic = 'force-dynamic';
 export async function GET(request: NextRequest) {
   try {
@@ -83,10 +84,10 @@ export async function GET(request: NextRequest) {
       evidence,
       validations,
       capabilities: {
-        liveAsr: false,
+        liveAsr: hasNatlasCredentials(),
         fixture:
           process.env.TRANSCRIPTION_MODE === 'fixture' && membership.business.mode === 'demo',
-        interpretation: 'Limited English rules; merchant review required',
+        interpretation: 'N-ATLAS suggestions when configured; merchant review required',
         speech: 'Read-back text; voice controls and speech output unavailable',
       },
     });

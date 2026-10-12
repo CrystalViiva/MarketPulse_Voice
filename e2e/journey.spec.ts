@@ -27,6 +27,39 @@ async function register(request: APIRequestContext, name = 'Browser merchant') {
   expect(business.ok()).toBeTruthy();
   return { email, password };
 }
+test('registration checks confirmation locally and keeps visibility controls independent', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await page.getByLabel('Your name').fill('Registration check');
+  await page.getByLabel('Email address').fill(`signup-${unique()}@example.test`);
+  const password = `Test-only-${unique()}`;
+  await page.getByLabel('Password', { exact: true }).fill(password);
+  await page.getByLabel('Confirm password').fill(`${password}wrong`);
+  let registrationRequests = 0;
+  let registrationPayload: Record<string, unknown> | undefined;
+  page.on('request', (request) => {
+    if (request.url().includes('/api/auth/sign-up/email')) {
+      registrationRequests++;
+      registrationPayload = request.postDataJSON() as Record<string, unknown>;
+    }
+  });
+  await page.getByRole('button', { name: 'Create my account' }).click();
+  await expect(page.getByRole('alert')).toContainText('passwords do not match');
+  expect(registrationRequests).toBe(0);
+
+  const showButtons = page.getByRole('button', { name: 'Show password' });
+  await showButtons.nth(0).click();
+  await expect(page.getByLabel('Password', { exact: true })).toHaveAttribute('type', 'text');
+  await expect(page.getByLabel('Confirm password')).toHaveAttribute('type', 'password');
+  await page.getByRole('button', { name: 'Show password' }).click();
+  await expect(page.getByLabel('Confirm password')).toHaveAttribute('type', 'text');
+  await page.getByLabel('Confirm password').fill(password);
+  await expect(page.getByRole('alert')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Create my account' }).click();
+  await expect(page.getByRole('heading', { name: 'Give your business a home.' })).toBeVisible();
+  expect(registrationPayload).not.toHaveProperty('confirmPassword');
+});
 test('mobile clarification, read-back, persistent ledger, debts and private report', async ({
   page,
 }) => {
@@ -123,13 +156,13 @@ test('real sign-in, denied microphone, recoverable provider failure and keyboard
     multipart: {
       mode: 'live',
       consent: 'true',
-      language: 'en-NG',
+      language: 'en',
       requestKey: unique(),
       audio: { name: 'test.wav', mimeType: 'audio/wav', buffer: b },
     },
   });
   expect(res.status()).toBe(503);
-  expect((await res.json()).error).toContain('not connected');
+  expect((await res.json()).error).toContain('not configured');
   await page.getByRole('button', { name: 'Manual entry', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Review your business record' })).toBeVisible();
   await page.getByLabel('Kind of record').focus();
@@ -317,10 +350,9 @@ test('browser records and normalizes audio, then keeps it after provider failure
   await page.waitForTimeout(1200);
   await page.getByRole('button', { name: 'Stop recording' }).click();
   await expect(page.getByRole('heading', { name: 'Your recording is ready' })).toBeVisible();
+  await page.getByLabel('Speech language').selectOption('yo');
   await page.getByRole('button', { name: 'Send for transcription' }).click();
-  await expect(page.locator('.notice.error')).toContainText(
-    'Live N-ATLAS transcription is not connected',
-  );
+  await expect(page.locator('.notice.error')).toContainText('N-ATLAS is not configured');
   await expect(page.getByRole('heading', { name: 'Your recording is ready' })).toBeVisible();
   await expect(page.locator('audio')).toHaveAttribute('src', /^blob:/);
 });
