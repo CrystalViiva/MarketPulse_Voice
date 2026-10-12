@@ -43,3 +43,11 @@ Server-side providers; same-origin mutation checks; persistent database rate lim
 Report links contain 256-bit random secrets. Only SHA-256 digests persist. Links expire after 1–168 hours and are revocable. Snapshot data is limited to aggregate totals, activity dates/types/amounts and evidence labels. No account identifiers, aliases, transcripts, file URLs or merchant navigation.
 
 Prototype tradeoffs: one owner per business, serialized financial writes, full activity lists in memory, bytea evidence storage, no email transport, no automatic retention scheduler. These keep correctness reviewable; production scale needs pagination, storage quotas, asynchronous media processing, monitoring and an operational review.
+
+## Stack and verification status
+
+The application is a Next.js 16 App Router project using React 19 and TypeScript. PostgreSQL is accessed through Prisma ORM 6.19; Better Auth provides email/password authentication and database-backed sessions; Zod validates request and provider data. Vitest covers domain/provider behavior and PostgreSQL integration, while Playwright exercises browser workflows.
+
+The recorded local verification passed lint, type checking, 26 unit/PostgreSQL tests, 8 browser tests, the production build, and a production-process restart smoke test. These checks used local databases and synthetic data. Provider adapter tests use simulated responses; live N-ATLAS inference, real-audio language accuracy, real-trader sessions, and production hosting have not been verified. See [the verification record](VERIFICATION.md) for exact scope and limitations.
+
+The project is a local prototype, not a production deployment. A production PostgreSQL service, TLS and backup policy, production authentication secret and HTTPS origin, deployment environment variables, and an approved migration workflow still need to be configured and tested. No production migration or deployment is claimed here.
